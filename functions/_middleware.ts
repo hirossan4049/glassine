@@ -42,7 +42,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         if (eventResult) {
           title = `${eventResult.title} - Glassine`;
           description = eventResult.description || '日程調整イベント';
-          ogImage = `${url.origin}/og/${eventId}.png?token=${token}`;
+          ogImage = `${url.origin}/api/events/${eventId}/og`;
           cacheBuster = eventResult.created_at;
         }
       } catch (error) {

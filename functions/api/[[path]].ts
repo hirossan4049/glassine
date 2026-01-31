@@ -274,6 +274,103 @@ app.delete('/events/:id/responses/:responseId', async (c) => {
   return c.json({ success: true });
 });
 
+// Generate OGP image for event
+app.get('/events/:id/og', async (c) => {
+  const eventId = c.req.param('id');
+
+  const eventResult = await c.env.DB.prepare(
+    'SELECT title, description, mode FROM events WHERE id = ?'
+  ).bind(eventId).first<any>();
+
+  if (!eventResult) {
+    return c.text('Event not found', 404);
+  }
+
+  const title = eventResult.title || 'イベント';
+  const description = eventResult.description || '';
+  const mode = eventResult.mode === 'dateonly' ? '日程調整' : '日時調整';
+
+  // Escape HTML entities
+  const escapeHtml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // Truncate title if too long
+  const displayTitle = title.length > 20 ? title.substring(0, 20) + '...' : title;
+  const displayDesc = description.length > 40 ? description.substring(0, 40) + '...' : description;
+
+  const svg = `
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="40" y="40" width="1120" height="550" rx="20" fill="white" opacity="0.95"/>
+
+  <!-- App name -->
+  <text x="100" y="120" font-family="system-ui, sans-serif" font-size="32" fill="#667eea" font-weight="bold">
+    Glassine
+  </text>
+  <text x="250" y="120" font-family="system-ui, sans-serif" font-size="24" fill="#888">
+    - ${escapeHtml(mode)}
+  </text>
+
+  <!-- Title -->
+  <text x="100" y="280" font-family="system-ui, sans-serif" font-size="72" fill="#333" font-weight="bold">
+    ${escapeHtml(displayTitle)}
+  </text>
+
+  <!-- Description -->
+  ${displayDesc ? `<text x="100" y="360" font-family="system-ui, sans-serif" font-size="32" fill="#666">${escapeHtml(displayDesc)}</text>` : ''}
+
+  <!-- Call to action -->
+  <rect x="100" y="460" width="300" height="60" rx="30" fill="#667eea"/>
+  <text x="250" y="500" font-family="system-ui, sans-serif" font-size="24" fill="white" text-anchor="middle" font-weight="bold">
+    回答する
+  </text>
+
+  <!-- Calendar icon -->
+  <g transform="translate(950, 400)">
+    <rect x="0" y="20" width="120" height="100" rx="10" fill="none" stroke="#667eea" stroke-width="4"/>
+    <rect x="0" y="20" width="120" height="30" rx="10" fill="#667eea"/>
+    <line x1="30" y1="0" x2="30" y2="30" stroke="#667eea" stroke-width="6" stroke-linecap="round"/>
+    <line x1="90" y1="0" x2="90" y2="30" stroke="#667eea" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="40" cy="80" r="8" fill="#28a745"/>
+    <circle cx="80" cy="80" r="8" fill="#ffc107"/>
+    <circle cx="40" cy="105" r="8" fill="#dc3545"/>
+    <circle cx="80" cy="105" r="8" fill="#28a745"/>
+  </g>
+</svg>`.trim();
+
+  return new Response(svg, {
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'Cache-Control': 'public, max-age=86400',
+    },
+  });
+});
+
+// Get event info for OGP (public, no token required)
+app.get('/events/:id/info', async (c) => {
+  const eventId = c.req.param('id');
+
+  const eventResult = await c.env.DB.prepare(
+    'SELECT title, description, mode FROM events WHERE id = ?'
+  ).bind(eventId).first<any>();
+
+  if (!eventResult) {
+    return c.json({ error: 'Event not found' }, 404);
+  }
+
+  return c.json({
+    title: eventResult.title,
+    description: eventResult.description,
+    mode: eventResult.mode,
+  });
+});
+
 // Confirm event slots
 app.post('/events/:id/confirm', async (c) => {
   const eventId = c.req.param('id');
