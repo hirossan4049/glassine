@@ -3,14 +3,11 @@ import type { Env, Event, CreateEventRequest, CreateResponseRequest, ConfirmEven
 
 const app = new Hono<{ Bindings: Env }>();
 
-// Generate random tokens
+// Generate cryptographically secure random tokens
 function generateToken(length = 32): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, length);
 }
 
 // Create event

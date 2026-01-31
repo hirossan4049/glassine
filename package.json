@@ -1,6 +1,7 @@
 {
   "name": "glassine",
   "version": "0.1.0",
+  "description": "Login-free schedule coordination tool built on Cloudflare infrastructure",
   "private": true,
   "type": "module",
   "scripts": {

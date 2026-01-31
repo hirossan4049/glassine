@@ -31,25 +31,24 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     let title = 'Glassine - 日程調整ツール';
     let description = 'ログイン不要の日程調整ツール';
     let ogImage = `${url.origin}/og-default.png`;
+    let cacheBuster = Date.now();
 
     if (eventId && token) {
       try {
         const eventResult = await context.env.DB.prepare(
-          'SELECT title, description FROM events WHERE id = ? AND (view_token = ? OR edit_token = ?)'
+          'SELECT title, description, created_at FROM events WHERE id = ? AND (view_token = ? OR edit_token = ?)'
         ).bind(eventId, token, token).first<any>();
 
         if (eventResult) {
           title = `${eventResult.title} - Glassine`;
           description = eventResult.description || '日程調整イベント';
           ogImage = `${url.origin}/og/${eventId}.png?token=${token}`;
+          cacheBuster = eventResult.created_at;
         }
       } catch (error) {
         console.error('Failed to fetch event for OGP', error);
       }
     }
-
-    // Generate cache-busting parameter for SNS
-    const cacheBuster = Date.now();
 
     const ogpTags = `
     <meta property="og:title" content="${title.replace(/"/g, '&quot;')}" />

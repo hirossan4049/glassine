@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import type { TimeSlot, Availability } from '../types';
 
 interface TimeGridProps {
-  slots: TimeSlot[];
+  slots: TimeSlot[]; // Reserved for future use to restrict selectable cells
   selectedSlots: Set<string>;
   onSlotsChange: (slots: Set<string>) => void;
   mode?: 'select' | 'availability';

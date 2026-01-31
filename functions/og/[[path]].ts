@@ -20,6 +20,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     // Generate simple SVG OG image
+    const escapeHtml = (text: string) => 
+      text.replace(/[<>&"']/g, (c) => ({'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}[c] || c));
+
     const svg = `
       <svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
         <rect width="1200" height="630" fill="#007bff"/>
@@ -27,7 +30,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           Glassine
         </text>
         <text x="600" y="350" font-family="Arial, sans-serif" font-size="40" fill="white" text-anchor="middle">
-          ${eventResult.title.replace(/[<>&"']/g, '')}
+          ${escapeHtml(eventResult.title)}
         </text>
         <text x="600" y="450" font-family="Arial, sans-serif" font-size="30" fill="white" text-anchor="middle">
           日程調整ツール
