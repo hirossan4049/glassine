@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { TimeSlot, EventMode } from '../types';
+import { addCreatedEvent } from '../utils/history';
 
 interface CreateEventProps {
   onBack: () => void;
@@ -103,6 +104,13 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       const data = await response.json() as any;
 
       if (response.ok) {
+        // 履歴に保存
+        addCreatedEvent({
+          eventId: data.eventId,
+          title: title.trim(),
+          editToken: data.editToken,
+          viewToken: data.viewToken,
+        });
         window.location.href = data.editUrl;
       } else {
         setError(data.error || 'イベントの作成に失敗しました');

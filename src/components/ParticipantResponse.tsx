@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { Event, Availability } from '../types';
+import { addRespondedEvent } from '../utils/history';
 
 interface ParticipantResponseProps {
   eventId: string;
@@ -137,6 +138,15 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       const data = await response.json() as any;
 
       if (response.ok) {
+        // 履歴に保存
+        if (event) {
+          addRespondedEvent({
+            eventId,
+            title: event.title,
+            participantName: name.trim(),
+            viewToken: token,
+          });
+        }
         setSuccess(true);
         setName('');
         setAvailability(new Map());
