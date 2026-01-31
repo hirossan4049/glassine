@@ -9,6 +9,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "oxlint",
+    "deploy": "wrangler pages deploy dist",
     "wrangler:dev": "wrangler pages dev dist --compatibility-date=2024-01-01",
     "wrangler:deploy": "wrangler pages deploy dist"
   },

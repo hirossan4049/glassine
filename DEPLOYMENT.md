@@ -85,9 +85,13 @@ wrangler pages deploy dist
 6. ビルド設定:
    - Build command: `npm run build`
    - Build output directory: `dist`
+   - Deploy command: `npm run deploy` (重要: `wrangler deploy`ではなく`wrangler pages deploy`を使用)
    - Environment variables:
      - なし（D1とKVのbindingはwrangler.tomlから自動取得）
 7. Save and Deploy
+
+> **注意**: デプロイコマンドは必ず `npm run deploy` または `wrangler pages deploy dist` を使用してください。
+> `wrangler deploy` はWorkersプロジェクト用のコマンドで、Pagesプロジェクトでは動作しません。
 
 ### 6. 環境変数の設定（オプション）
 
