@@ -5,12 +5,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build && wrangler pages dev dist --d1=DB --persist-to=.wrangler/state --compatibility-date=2024-01-01",
+    "dev:vite": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "oxlint",
     "deploy": "wrangler pages deploy dist",
-    "wrangler:dev": "wrangler pages dev dist --compatibility-date=2024-01-01",
+    "db:init": "for f in .wrangler/state/v3/d1/miniflare-D1DatabaseObject/*.sqlite; do sqlite3 \"$f\" < schema/schema.sql 2>/dev/null; done; echo 'DB initialized'",
+    "db:init:remote": "wrangler d1 execute glassine-db --remote --file=schema/schema.sql",
+    "wrangler:dev": "wrangler pages dev dist --d1=DB --persist-to=.wrangler/state --compatibility-date=2024-01-01",
     "wrangler:deploy": "wrangler pages deploy dist"
   },
   "dependencies": {
