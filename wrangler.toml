@@ -1,6 +1,10 @@
 name = "glassine"
 compatibility_date = "2024-01-01"
-pages_build_output_dir = "dist"
+pages_build_output_dir = "./dist"
+
+# Assets configuration for wrangler versions upload
+[assets]
+directory = "./dist"
 
 [env.production]
 vars = { ENVIRONMENT = "production" }
