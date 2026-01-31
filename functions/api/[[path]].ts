@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
+import { handle } from 'hono/cloudflare-pages';
 import type { Env, Event, CreateEventRequest, CreateResponseRequest, ConfirmEventRequest, SlotAggregation } from '../../src/types';
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<{ Bindings: Env }>().basePath('/api');
 
 // Generate cryptographically secure random tokens
 function generateToken(length = 32): string {
@@ -236,4 +237,4 @@ app.post('/events/:id/confirm', async (c) => {
   return c.json({ success: true });
 });
 
-export const onRequest = app.fetch;
+export const onRequest = handle(app);

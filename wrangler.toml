@@ -2,18 +2,23 @@ name = "glassine"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "./dist"
 
-# Assets configuration for wrangler versions upload
-[assets]
-directory = "./dist"
+[[d1_databases]]
+binding = "DB"
+database_name = "glassine-db"
+database_id = "73424753-8e3b-43c2-b2bd-18c02eaf38ec"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "ed21df80e97c412eb037084f9b9d61fe"
 
 [env.production]
 vars = { ENVIRONMENT = "production" }
 
-[[d1_databases]]
+[[env.production.d1_databases]]
 binding = "DB"
 database_name = "glassine-db"
-database_id = "placeholder-create-with-wrangler-d1"
+database_id = "73424753-8e3b-43c2-b2bd-18c02eaf38ec"
 
-[[kv_namespaces]]
+[[env.production.kv_namespaces]]
 binding = "KV"
-id = "placeholder-create-with-wrangler-kv"
+id = "ed21df80e97c412eb037084f9b9d61fe"

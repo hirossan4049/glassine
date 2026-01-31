@@ -18,3 +18,10 @@ dist/
 
 # OS
 .DS_Store
+
+# Claude Code
+.claude/
+
+# Misc
+tsc
+glassine@*
