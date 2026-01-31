@@ -103,12 +103,17 @@ vars = { ENVIRONMENT = "production" }
 [[d1_databases]]
 binding = "DB"
 database_name = "glassine-db"
-database_id = "your-actual-database-id"  # 実際の ID に置き換え
+database_id = "your-actual-database-id"  # wrangler d1 create で取得した ID
 
 [[kv_namespaces]]
 binding = "KV"
-id = "your-actual-kv-id"  # 実際の ID に置き換え
+id = "your-actual-kv-id"  # wrangler kv:namespace create で取得した ID
 ```
+
+> **ID の取得方法**:
+> - D1: `wrangler d1 create glassine-db` 実行時に出力される `database_id`
+> - KV: `wrangler kv:namespace create "KV"` 実行時に出力される `id`
+> - または Cloudflare Dashboard → Workers & Pages → D1/KV で確認可能
 
 ### Cloudflare Dashboard 設定
 
@@ -222,7 +227,7 @@ functions/
 
 ```typescript
 // functions/api/middleware/auth.ts
-import { Hono, Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 
 export async function authMiddleware(c: Context, next: Next) {
   const token = c.req.query('token');
