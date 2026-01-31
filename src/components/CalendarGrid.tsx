@@ -24,12 +24,10 @@ function getMonthDays(year: number, month: number): (Date | null)[] {
   const lastDay = new Date(year, month + 1, 0);
   const days: (Date | null)[] = [];
 
-  // Add padding for days before the first day of the month
   for (let i = 0; i < firstDay.getDay(); i++) {
     days.push(null);
   }
 
-  // Add all days of the month
   for (let d = 1; d <= lastDay.getDate(); d++) {
     days.push(new Date(year, month, d));
   }
@@ -55,7 +53,7 @@ export default function CalendarGrid({
 }: CalendarGridProps) {
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [paintMode, setPaintMode] = useState<'add' | 'remove'>('add');
-  const [availabilityPaintMode, setAvailabilityPaintMode] = useState<Availability>('available');
+  const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [baseDate, setBaseDate] = useState(() => new Date());
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -76,26 +74,15 @@ export default function CalendarGrid({
       }
       onDatesChange(newDates);
     } else if (mode === 'availability' && onAvailabilityChange) {
-      const currentAvailability = availability.get(key);
       const newAvailability = new Map(availability);
-
-      if (currentAvailability === 'available') {
-        newAvailability.set(key, 'maybe');
-        setAvailabilityPaintMode('maybe');
-      } else if (currentAvailability === 'maybe') {
-        newAvailability.set(key, 'unavailable');
-        setAvailabilityPaintMode('unavailable');
-      } else if (currentAvailability === 'unavailable') {
+      if (selectedBrush === 'clear') {
         newAvailability.delete(key);
-        setAvailabilityPaintMode('available');
       } else {
-        newAvailability.set(key, 'available');
-        setAvailabilityPaintMode('available');
+        newAvailability.set(key, selectedBrush);
       }
-
       onAvailabilityChange(newAvailability);
     }
-  }, [selectedDates, onDatesChange, mode, availability, onAvailabilityChange, allowedDates]);
+  }, [selectedDates, onDatesChange, mode, availability, onAvailabilityChange, allowedDates, selectedBrush]);
 
   const handleCellMouseEnter = useCallback((key: string, date: Date) => {
     if (!isMouseDown) return;
@@ -112,10 +99,14 @@ export default function CalendarGrid({
       onDatesChange(newDates);
     } else if (mode === 'availability' && onAvailabilityChange) {
       const newAvailability = new Map(availability);
-      newAvailability.set(key, availabilityPaintMode);
+      if (selectedBrush === 'clear') {
+        newAvailability.delete(key);
+      } else {
+        newAvailability.set(key, selectedBrush);
+      }
       onAvailabilityChange(newAvailability);
     }
-  }, [isMouseDown, paintMode, selectedDates, onDatesChange, mode, availabilityPaintMode, availability, onAvailabilityChange, allowedDates]);
+  }, [isMouseDown, paintMode, selectedDates, onDatesChange, mode, selectedBrush, availability, onAvailabilityChange, allowedDates]);
 
   const handleMouseUp = useCallback(() => {
     setIsMouseDown(false);
@@ -148,6 +139,10 @@ export default function CalendarGrid({
   const getTextColor = (key: string, date: Date): string => {
     if (isPastDate(date)) return '#999';
     if (mode === 'select' && selectedDates.has(key)) return '#fff';
+    if (mode === 'availability') {
+      const avail = availability.get(key);
+      if (avail === 'available' || avail === 'unavailable') return '#fff';
+    }
     return '#333';
   };
 
@@ -234,7 +229,7 @@ export default function CalendarGrid({
                   fontSize: '0.95rem',
                 }}
               >
-                <span style={{ color: dayOfWeek === 0 ? (selectedDates.has(key) ? '#fff' : '#dc3545') : dayOfWeek === 6 ? (selectedDates.has(key) ? '#fff' : '#007bff') : undefined }}>
+                <span style={{ color: dayOfWeek === 0 ? (selectedDates.has(key) || availability.get(key) ? '#fff' : '#dc3545') : dayOfWeek === 6 ? (selectedDates.has(key) || availability.get(key) ? '#fff' : '#007bff') : undefined }}>
                   {date.getDate()}
                 </span>
               </div>
@@ -250,8 +245,45 @@ export default function CalendarGrid({
   month2Date.setMonth(month2Date.getMonth() + 1);
   const month2 = { year: month2Date.getFullYear(), month: month2Date.getMonth() };
 
+  const brushOptions: { value: Availability | 'clear'; label: string; color: string; symbol: string }[] = [
+    { value: 'available', label: '参加可能', color: '#28a745', symbol: '○' },
+    { value: 'maybe', label: '参加可能かも', color: '#ffc107', symbol: '△' },
+    { value: 'unavailable', label: '参加不可', color: '#dc3545', symbol: '×' },
+    { value: 'clear', label: 'クリア', color: '#fff', symbol: '消' },
+  ];
+
   return (
     <div style={{ userSelect: 'none' }} ref={gridRef}>
+      {mode === 'availability' && (
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>ブラシを選択:</div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {brushOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setSelectedBrush(option.value)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: option.color,
+                  color: option.value === 'clear' || option.value === 'maybe' ? '#333' : '#fff',
+                  border: selectedBrush === option.value ? '3px solid #333' : '1px solid #ddd',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: selectedBrush === option.value ? 'bold' : 'normal',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <span style={{ fontSize: '1.2rem' }}>{option.symbol}</span>
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <button
           onClick={() => navigateMonth(-1)}
@@ -283,25 +315,6 @@ export default function CalendarGrid({
         {renderMonth(month1.year, month1.month)}
         {renderMonth(month2.year, month2.month)}
       </div>
-
-      {mode === 'availability' && (
-        <div style={{ marginTop: '1rem', fontSize: '0.9rem' }}>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '20px', height: '20px', background: '#28a745' }} />
-              <span>○ 参加可能</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '20px', height: '20px', background: '#ffc107' }} />
-              <span>△ 参加可能かも</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '20px', height: '20px', background: '#dc3545' }} />
-              <span>× 参加不可</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

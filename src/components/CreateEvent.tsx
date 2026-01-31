@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { TimeSlot, EventMode } from '../types';
@@ -6,6 +6,8 @@ import type { TimeSlot, EventMode } from '../types';
 interface CreateEventProps {
   onBack: () => void;
 }
+
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 export default function CreateEvent({ onBack }: CreateEventProps) {
   const [title, setTitle] = useState('');
@@ -16,19 +18,41 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
+  // Sort selected dates for TimeGrid
+  const sortedDates = useMemo(() => {
+    return Array.from(selectedDates).sort();
+  }, [selectedDates]);
+
+  // Generate day labels for TimeGrid based on selected dates
+  const dayLabels = useMemo(() => {
+    return sortedDates.map((dateStr) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const weekday = WEEKDAYS[date.getDay()];
+      return `${month}/${day}(${weekday})`;
+    });
+  }, [sortedDates]);
+
   const handleCreate = async () => {
     if (!title.trim()) {
       setError('イベント名を入力してください');
       return;
     }
 
-    const hasSelection = mode === 'dateonly'
-      ? selectedDates.size > 0
-      : selectedSlots.size > 0;
-
-    if (!hasSelection) {
-      setError('候補日時を選択してください');
-      return;
+    if (mode === 'dateonly') {
+      if (selectedDates.size === 0) {
+        setError('候補日程を選択してください');
+        return;
+      }
+    } else {
+      if (selectedDates.size === 0) {
+        setError('候補日を選択してください');
+        return;
+      }
+      if (selectedSlots.size === 0) {
+        setError('候補時間を選択してください');
+        return;
+      }
     }
 
     setCreating(true);
@@ -38,39 +62,33 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       let slots: TimeSlot[];
 
       if (mode === 'dateonly') {
-        // Convert selected dates to TimeSlot array
         slots = Array.from(selectedDates).map((dateStr) => {
           const [year, month, day] = dateStr.split('-').map(Number);
           const date = new Date(year, month - 1, day);
           date.setHours(0, 0, 0, 0);
           const start = date.getTime();
-          const end = start + (24 * 60 * 60 * 1000) - 1; // 23:59:59.999
+          const end = start + (24 * 60 * 60 * 1000) - 1;
           return { start, end };
         });
       } else {
-        // Convert selected slots to TimeSlot array (existing logic)
+        // For datetime mode, combine selected dates with selected time slots
         slots = [];
-        const now = new Date();
-        const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
         selectedSlots.forEach((key) => {
-          const [dayStr, hourStr, minuteStr] = key.split('-');
-          const day = parseInt(dayStr);
+          const [dayIndexStr, hourStr, minuteStr] = key.split('-');
+          const dayIndex = parseInt(dayIndexStr);
           const hour = parseInt(hourStr);
           const minute = parseInt(minuteStr);
 
-          // Calculate date for this day (0 = Monday of current/next week)
-          const currentDay = now.getDay();
-          const daysUntilMonday = currentDay === 0 ? 1 : 1 - currentDay;
-          const monday = new Date(baseDate);
-          monday.setDate(monday.getDate() + daysUntilMonday);
+          // Get the actual date from sortedDates
+          const dateStr = sortedDates[dayIndex];
+          if (!dateStr) return;
 
-          const slotDate = new Date(monday);
-          slotDate.setDate(slotDate.getDate() + day);
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const slotDate = new Date(year, month - 1, day);
           slotDate.setHours(hour, minute, 0, 0);
 
           const start = slotDate.getTime();
-          const end = start + 30 * 60 * 1000; // 30 minutes
+          const end = start + 30 * 60 * 1000;
 
           slots.push({ start, end });
         });
@@ -85,7 +103,6 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       const data = await response.json() as any;
 
       if (response.ok) {
-        // Navigate to edit page
         window.location.href = data.editUrl;
       } else {
         setError(data.error || 'イベントの作成に失敗しました');
@@ -96,9 +113,6 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       setCreating(false);
     }
   };
-
-  const selectionCount = mode === 'dateonly' ? selectedDates.size : selectedSlots.size;
-  const selectionUnit = mode === 'dateonly' ? '日' : 'スロット';
 
   return (
     <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -164,7 +178,10 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <button
             type="button"
-            onClick={() => setMode('dateonly')}
+            onClick={() => {
+              setMode('dateonly');
+              setSelectedSlots(new Set());
+            }}
             style={{
               padding: '1rem 1.5rem',
               background: mode === 'dateonly' ? '#007bff' : '#f0f0f0',
@@ -182,7 +199,9 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
           </button>
           <button
             type="button"
-            onClick={() => setMode('datetime')}
+            onClick={() => {
+              setMode('datetime');
+            }}
             style={{
               padding: '1rem 1.5rem',
               background: mode === 'datetime' ? '#007bff' : '#f0f0f0',
@@ -195,39 +214,55 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
           >
             <div style={{ fontWeight: 'bold' }}>時間込み</div>
             <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.8 }}>
-              日時を選択
+              日付と時間を選択
             </div>
           </button>
         </div>
       </div>
 
+      {/* Step 1: Select dates on calendar (both modes) */}
       <div style={{ marginBottom: '1.5rem' }}>
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          候補{mode === 'dateonly' ? '日程' : '日時'}を選択 *
+          {mode === 'dateonly' ? '候補日程を選択 *' : 'Step 1: 候補日を選択 *'}
         </label>
         <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-          {mode === 'dateonly'
-            ? 'カレンダー上をドラッグして候補日を選択してください'
-            : 'グリッド上をドラッグして候補時間を選択してください'}
+          カレンダー上をドラッグして候補日を選択してください
         </p>
+        <CalendarGrid
+          selectedDates={selectedDates}
+          onDatesChange={(dates) => {
+            setSelectedDates(dates);
+            // Clear time slots if dates changed in datetime mode
+            if (mode === 'datetime') {
+              setSelectedSlots(new Set());
+            }
+          }}
+        />
+        <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+          選択中: {selectedDates.size} 日
+        </p>
+      </div>
 
-        {mode === 'dateonly' ? (
-          <CalendarGrid
-            selectedDates={selectedDates}
-            onDatesChange={setSelectedDates}
-          />
-        ) : (
+      {/* Step 2: Select time slots (datetime mode only) */}
+      {mode === 'datetime' && selectedDates.size > 0 && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+            Step 2: 候補時間を選択 *
+          </label>
+          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
+            グリッド上をドラッグして候補時間を選択してください
+          </p>
           <TimeGrid
             slots={[]}
             selectedSlots={selectedSlots}
             onSlotsChange={setSelectedSlots}
+            days={dayLabels}
           />
-        )}
-
-        <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
-          選択中: {selectionCount} {selectionUnit}
-        </p>
-      </div>
+          <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+            選択中: {selectedSlots.size} スロット
+          </p>
+        </div>
+      )}
 
       {error && (
         <div

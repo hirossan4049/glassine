@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { Event, Availability } from '../types';
@@ -8,6 +8,8 @@ interface ParticipantResponseProps {
   token: string;
   onBack: () => void;
 }
+
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function dateKey(date: Date): string {
   const year = date.getFullYear();
@@ -47,6 +49,31 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
     }
   };
 
+  // Extract unique dates from event slots for datetime mode
+  const { sortedDates, dayLabels } = useMemo(() => {
+    if (!event || event.mode === 'dateonly') {
+      return { sortedDates: [], dayLabels: [] };
+    }
+
+    const datesSet = new Set<string>();
+
+    for (const slot of event.slots) {
+      const date = new Date(slot.start);
+      const key = dateKey(date);
+      datesSet.add(key);
+    }
+
+    const sorted = Array.from(datesSet).sort();
+    const labels = sorted.map((dateStr) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      const weekday = WEEKDAYS[date.getDay()];
+      return `${month}/${day}(${weekday})`;
+    });
+
+    return { sortedDates: sorted, dayLabels: labels };
+  }, [event]);
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       setError('名前を入力してください');
@@ -78,30 +105,27 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           return { start, end, availability: avail };
         });
       } else {
-        // Convert time availability map to slots array
-        slots = Array.from(availability.entries()).map(([key, avail]) => {
-          const [dayStr, hourStr, minuteStr] = key.split('-');
-          const day = parseInt(dayStr);
+        // For datetime mode, convert grid key (dayIndex-hour-minute) to actual slot timestamps
+        slots = [];
+        for (const [key, avail] of availability.entries()) {
+          const [dayIndexStr, hourStr, minuteStr] = key.split('-');
+          const dayIndex = parseInt(dayIndexStr);
           const hour = parseInt(hourStr);
           const minute = parseInt(minuteStr);
 
-          // Calculate timestamp similar to CreateEvent
-          const now = new Date();
-          const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const currentDay = now.getDay();
-          const daysUntilMonday = currentDay === 0 ? 1 : 1 - currentDay;
-          const monday = new Date(baseDate);
-          monday.setDate(monday.getDate() + daysUntilMonday);
+          // Get the actual date from sortedDates
+          const dateStr = sortedDates[dayIndex];
+          if (!dateStr) continue;
 
-          const slotDate = new Date(monday);
-          slotDate.setDate(slotDate.getDate() + day);
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const slotDate = new Date(year, month - 1, day);
           slotDate.setHours(hour, minute, 0, 0);
 
           const start = slotDate.getTime();
           const end = start + 30 * 60 * 1000;
 
-          return { start, end, availability: avail };
-        });
+          slots.push({ start, end, availability: avail });
+        }
       }
 
       const response = await fetch(`/api/events/${eventId}/responses`, {
@@ -248,9 +272,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           可否を入力 *
         </label>
         <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-          {isDateOnly
-            ? 'カレンダー上をクリック/ドラッグして可否を入力してください'
-            : 'グリッド上をクリック/ドラッグして可否を入力してください'}
+          ブラシを選択してから、{isDateOnly ? 'カレンダー' : 'グリッド'}上をクリック/ドラッグして可否を入力してください
         </p>
 
         {isDateOnly ? (
@@ -270,6 +292,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
             mode="availability"
             availability={availability}
             onAvailabilityChange={setAvailability}
+            days={dayLabels}
           />
         )}
 
