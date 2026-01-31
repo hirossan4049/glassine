@@ -71,7 +71,7 @@ npm run lint
 ```bash
 # Cloudflare Pagesにデプロイ
 npm run build
-wrangler pages deploy dist
+npm run deploy
 ```
 
 ## 使い方
