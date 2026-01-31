@@ -23,6 +23,47 @@ function slotKey(day: number, hour: number, minute: number): string {
   return `${day}-${hour}-${minute}`;
 }
 
+// Parse slot key back to components
+function parseSlotKey(key: string): { day: number; hour: number; minute: number } {
+  const [day, hour, minute] = key.split('-').map(Number);
+  return { day, hour, minute };
+}
+
+// Get all slot keys in a rectangle between two cells
+function getKeysInRange(
+  startKey: string,
+  endKey: string,
+  days: string[],
+  hours: number[]
+): string[] {
+  const start = parseSlotKey(startKey);
+  const end = parseSlotKey(endKey);
+
+  const minDay = Math.min(start.day, end.day);
+  const maxDay = Math.max(start.day, end.day);
+
+  // Convert hour:minute to slot index for comparison
+  const startSlotIndex = start.hour * 2 + (start.minute === 30 ? 1 : 0);
+  const endSlotIndex = end.hour * 2 + (end.minute === 30 ? 1 : 0);
+  const minSlotIndex = Math.min(startSlotIndex, endSlotIndex);
+  const maxSlotIndex = Math.max(startSlotIndex, endSlotIndex);
+
+  const keys: string[] = [];
+
+  for (let dayIndex = minDay; dayIndex <= maxDay && dayIndex < days.length; dayIndex++) {
+    for (const hour of hours) {
+      for (const minute of [0, 30]) {
+        const slotIndex = hour * 2 + (minute === 30 ? 1 : 0);
+        if (slotIndex >= minSlotIndex && slotIndex <= maxSlotIndex) {
+          keys.push(slotKey(dayIndex, hour, minute));
+        }
+      }
+    }
+  }
+
+  return keys;
+}
+
 export default function TimeGrid({
   slots: _slots,
   selectedSlots,
@@ -36,10 +77,40 @@ export default function TimeGrid({
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [paintMode, setPaintMode] = useState<'add' | 'remove'>('add');
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
+  const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const handleCellMouseDown = useCallback((key: string) => {
+  const handleCellMouseDown = useCallback((key: string, shiftKey: boolean) => {
+    // Shift+click for range selection
+    if (shiftKey && lastClickedKey) {
+      const keysInRange = getKeysInRange(lastClickedKey, key, days, HOURS);
+
+      if (mode === 'select') {
+        const newSlots = new Set(selectedSlots);
+        for (const k of keysInRange) {
+          if (paintMode === 'add') {
+            newSlots.add(k);
+          } else {
+            newSlots.delete(k);
+          }
+        }
+        onSlotsChange(newSlots);
+      } else if (mode === 'availability' && onAvailabilityChange) {
+        const newAvailability = new Map(availability);
+        for (const k of keysInRange) {
+          if (selectedBrush === 'clear') {
+            newAvailability.delete(k);
+          } else {
+            newAvailability.set(k, selectedBrush);
+          }
+        }
+        onAvailabilityChange(newAvailability);
+      }
+      return;
+    }
+
     setIsMouseDown(true);
+    setLastClickedKey(key);
 
     if (mode === 'select') {
       const newSlots = new Set(selectedSlots);
@@ -60,7 +131,7 @@ export default function TimeGrid({
       }
       onAvailabilityChange(newAvailability);
     }
-  }, [selectedSlots, onSlotsChange, mode, availability, onAvailabilityChange, selectedBrush]);
+  }, [selectedSlots, onSlotsChange, mode, availability, onAvailabilityChange, selectedBrush, lastClickedKey, paintMode, days]);
 
   const handleCellMouseEnter = useCallback((key: string) => {
     if (!isMouseDown) return;
@@ -130,6 +201,9 @@ export default function TimeGrid({
 
   return (
     <div style={{ overflowX: 'auto', userSelect: 'none' }}>
+      <div style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
+        💡 ドラッグで塗り / Shift+クリックで範囲選択
+      </div>
       {mode === 'availability' && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>ブラシを選択:</div>
@@ -208,9 +282,9 @@ export default function TimeGrid({
                   return (
                     <div
                       key={key}
-                      onMouseDown={() => handleCellMouseDown(key)}
+                      onMouseDown={(e) => handleCellMouseDown(key, e.shiftKey)}
                       onMouseEnter={() => handleCellMouseEnter(key)}
-                      onTouchStart={() => handleCellMouseDown(key)}
+                      onTouchStart={() => handleCellMouseDown(key, false)}
                       onTouchMove={(e) => {
                         const touch = e.touches[0];
                         const element = document.elementFromPoint(touch.clientX, touch.clientY);

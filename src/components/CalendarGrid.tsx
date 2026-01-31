@@ -43,6 +43,34 @@ function isPastDate(date: Date): boolean {
   return compareDate < today;
 }
 
+// Get all date keys between two dates (inclusive)
+function getDateKeysInRange(startKey: string, endKey: string, allowedDates?: Set<string>): string[] {
+  const [startYear, startMonth, startDay] = startKey.split('-').map(Number);
+  const [endYear, endMonth, endDay] = endKey.split('-').map(Number);
+
+  const startDate = new Date(startYear, startMonth - 1, startDay);
+  const endDate = new Date(endYear, endMonth - 1, endDay);
+
+  // Ensure start is before end
+  const minDate = startDate < endDate ? startDate : endDate;
+  const maxDate = startDate < endDate ? endDate : startDate;
+
+  const keys: string[] = [];
+  const current = new Date(minDate);
+
+  while (current <= maxDate) {
+    if (!isPastDate(current)) {
+      const key = dateKey(current);
+      if (!allowedDates || allowedDates.has(key)) {
+        keys.push(key);
+      }
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return keys;
+}
+
 export default function CalendarGrid({
   selectedDates,
   onDatesChange,
@@ -55,13 +83,43 @@ export default function CalendarGrid({
   const [paintMode, setPaintMode] = useState<'add' | 'remove'>('add');
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [baseDate, setBaseDate] = useState(() => new Date());
+  const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const handleCellMouseDown = useCallback((key: string, date: Date) => {
+  const handleCellMouseDown = useCallback((key: string, date: Date, shiftKey: boolean) => {
     if (isPastDate(date)) return;
     if (allowedDates && !allowedDates.has(key)) return;
 
+    // Shift+click for range selection
+    if (shiftKey && lastClickedKey) {
+      const keysInRange = getDateKeysInRange(lastClickedKey, key, allowedDates);
+
+      if (mode === 'select') {
+        const newDates = new Set(selectedDates);
+        for (const k of keysInRange) {
+          if (paintMode === 'add') {
+            newDates.add(k);
+          } else {
+            newDates.delete(k);
+          }
+        }
+        onDatesChange(newDates);
+      } else if (mode === 'availability' && onAvailabilityChange) {
+        const newAvailability = new Map(availability);
+        for (const k of keysInRange) {
+          if (selectedBrush === 'clear') {
+            newAvailability.delete(k);
+          } else {
+            newAvailability.set(k, selectedBrush);
+          }
+        }
+        onAvailabilityChange(newAvailability);
+      }
+      return;
+    }
+
     setIsMouseDown(true);
+    setLastClickedKey(key);
 
     if (mode === 'select') {
       const newDates = new Set(selectedDates);
@@ -82,7 +140,7 @@ export default function CalendarGrid({
       }
       onAvailabilityChange(newAvailability);
     }
-  }, [selectedDates, onDatesChange, mode, availability, onAvailabilityChange, allowedDates, selectedBrush]);
+  }, [selectedDates, onDatesChange, mode, availability, onAvailabilityChange, allowedDates, selectedBrush, lastClickedKey, paintMode]);
 
   const handleCellMouseEnter = useCallback((key: string, date: Date) => {
     if (!isMouseDown) return;
@@ -203,9 +261,9 @@ export default function CalendarGrid({
               <div
                 key={key}
                 data-key={key}
-                onMouseDown={() => handleCellMouseDown(key, date)}
+                onMouseDown={(e) => handleCellMouseDown(key, date, e.shiftKey)}
                 onMouseEnter={() => handleCellMouseEnter(key, date)}
-                onTouchStart={() => handleCellMouseDown(key, date)}
+                onTouchStart={() => handleCellMouseDown(key, date, false)}
                 onTouchMove={(e) => {
                   const touch = e.touches[0];
                   const element = document.elementFromPoint(touch.clientX, touch.clientY);
@@ -254,6 +312,9 @@ export default function CalendarGrid({
 
   return (
     <div style={{ userSelect: 'none' }} ref={gridRef}>
+      <div style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
+        💡 ドラッグで塗り / Shift+クリックで範囲選択
+      </div>
       {mode === 'availability' && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>ブラシを選択:</div>
