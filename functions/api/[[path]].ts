@@ -19,12 +19,12 @@ app.post('/events', async (c) => {
   const viewToken = generateToken();
   const createdAt = Date.now();
 
-  const { title, description, slots, timezone = 'Asia/Tokyo' } = body;
+  const { title, description, slots, timezone = 'Asia/Tokyo', mode = 'datetime' } = body;
 
   // Insert event
   await c.env.DB.prepare(
-    'INSERT INTO events (id, title, description, edit_token, view_token, created_at, timezone) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).bind(eventId, title, description || null, editToken, viewToken, createdAt, timezone).run();
+    'INSERT INTO events (id, title, description, edit_token, view_token, created_at, timezone, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(eventId, title, description || null, editToken, viewToken, createdAt, timezone, mode).run();
 
   // Insert slots
   for (const slot of slots) {
@@ -105,6 +105,7 @@ app.get('/events/:id', async (c) => {
     createdAt: eventResult.created_at,
     confirmedSlots: eventResult.confirmed_slots,
     timezone: eventResult.timezone,
+    mode: eventResult.mode || 'datetime',
     slots: (slotsResult.results || []).map((s: any) => ({
       id: s.id,
       start: s.start_time,

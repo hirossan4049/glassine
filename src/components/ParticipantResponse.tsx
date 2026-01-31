@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import TimeGrid from './TimeGrid';
+import CalendarGrid from './CalendarGrid';
 import type { Event, Availability } from '../types';
 
 interface ParticipantResponseProps {
@@ -8,10 +9,18 @@ interface ParticipantResponseProps {
   onBack: () => void;
 }
 
+function dateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function ParticipantResponse({ eventId, token, onBack }: ParticipantResponseProps) {
   const [event, setEvent] = useState<Event | null>(null);
   const [name, setName] = useState('');
   const [availability, setAvailability] = useState<Map<string, Availability>>(new Map());
+  const [dateAvailability, setDateAvailability] = useState<Map<string, Availability>>(new Map());
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -44,7 +53,10 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       return;
     }
 
-    if (availability.size === 0) {
+    const isDateOnly = event?.mode === 'dateonly';
+    const currentAvailability = isDateOnly ? dateAvailability : availability;
+
+    if (currentAvailability.size === 0) {
       setError('可否を入力してください');
       return;
     }
@@ -53,30 +65,44 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
     setError('');
 
     try {
-      // Convert availability map to slots array
-      const slots = Array.from(availability.entries()).map(([key, avail]) => {
-        const [dayStr, hourStr, minuteStr] = key.split('-');
-        const day = parseInt(dayStr);
-        const hour = parseInt(hourStr);
-        const minute = parseInt(minuteStr);
+      let slots;
 
-        // Calculate timestamp similar to CreateEvent
-        const now = new Date();
-        const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const currentDay = now.getDay();
-        const daysUntilMonday = currentDay === 0 ? 1 : 1 - currentDay;
-        const monday = new Date(baseDate);
-        monday.setDate(monday.getDate() + daysUntilMonday);
+      if (isDateOnly) {
+        // Convert date availability to slots array
+        slots = Array.from(dateAvailability.entries()).map(([dateStr, avail]) => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          date.setHours(0, 0, 0, 0);
+          const start = date.getTime();
+          const end = start + (24 * 60 * 60 * 1000) - 1;
+          return { start, end, availability: avail };
+        });
+      } else {
+        // Convert time availability map to slots array
+        slots = Array.from(availability.entries()).map(([key, avail]) => {
+          const [dayStr, hourStr, minuteStr] = key.split('-');
+          const day = parseInt(dayStr);
+          const hour = parseInt(hourStr);
+          const minute = parseInt(minuteStr);
 
-        const slotDate = new Date(monday);
-        slotDate.setDate(slotDate.getDate() + day);
-        slotDate.setHours(hour, minute, 0, 0);
+          // Calculate timestamp similar to CreateEvent
+          const now = new Date();
+          const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const currentDay = now.getDay();
+          const daysUntilMonday = currentDay === 0 ? 1 : 1 - currentDay;
+          const monday = new Date(baseDate);
+          monday.setDate(monday.getDate() + daysUntilMonday);
 
-        const start = slotDate.getTime();
-        const end = start + 30 * 60 * 1000;
+          const slotDate = new Date(monday);
+          slotDate.setDate(slotDate.getDate() + day);
+          slotDate.setHours(hour, minute, 0, 0);
 
-        return { start, end, availability: avail };
-      });
+          const start = slotDate.getTime();
+          const end = start + 30 * 60 * 1000;
+
+          return { start, end, availability: avail };
+        });
+      }
 
       const response = await fetch(`/api/events/${eventId}/responses`, {
         method: 'POST',
@@ -90,6 +116,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
         setSuccess(true);
         setName('');
         setAvailability(new Map());
+        setDateAvailability(new Map());
       } else {
         setError(data.error || '回答の送信に失敗しました');
       }
@@ -118,7 +145,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
   if (success) {
     return (
       <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-        <h1 style={{ color: '#28a745', marginBottom: '1rem' }}>✓ 回答を送信しました</h1>
+        <h1 style={{ color: '#28a745', marginBottom: '1rem' }}>回答を送信しました</h1>
         <p style={{ marginBottom: '1.5rem' }}>ご協力ありがとうございました。</p>
         <button
           onClick={() => setSuccess(false)}
@@ -149,6 +176,20 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
     );
   }
 
+  const isDateOnly = event?.mode === 'dateonly';
+  const currentAvailability = isDateOnly ? dateAvailability : availability;
+  const inputUnit = isDateOnly ? '日' : 'スロット';
+
+  // Generate allowed dates from event slots for date-only mode
+  const allowedDates = isDateOnly
+    ? new Set(
+        (event?.slots || []).map((slot) => {
+          const date = new Date(slot.start);
+          return dateKey(date);
+        })
+      )
+    : undefined;
+
   return (
     <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
       <button
@@ -166,7 +207,21 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       </button>
 
       <h1 style={{ marginBottom: '0.5rem' }}>{event?.title}</h1>
-      {event?.description && <p style={{ color: '#666', marginBottom: '1.5rem' }}>{event.description}</p>}
+      {event?.description && <p style={{ color: '#666', marginBottom: '1rem' }}>{event.description}</p>}
+
+      <div
+        style={{
+          display: 'inline-block',
+          padding: '0.25rem 0.75rem',
+          background: isDateOnly ? '#6c757d' : '#17a2b8',
+          color: 'white',
+          borderRadius: '4px',
+          fontSize: '0.9rem',
+          marginBottom: '1.5rem',
+        }}
+      >
+        {isDateOnly ? '日程のみ' : '時間込み'}
+      </div>
 
       <div style={{ marginBottom: '1.5rem' }}>
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
@@ -193,18 +248,33 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           可否を入力 *
         </label>
         <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-          グリッド上をクリック/ドラッグして可否を入力してください
+          {isDateOnly
+            ? 'カレンダー上をクリック/ドラッグして可否を入力してください'
+            : 'グリッド上をクリック/ドラッグして可否を入力してください'}
         </p>
-        <TimeGrid
-          slots={event?.slots || []}
-          selectedSlots={new Set()}
-          onSlotsChange={() => {}}
-          mode="availability"
-          availability={availability}
-          onAvailabilityChange={setAvailability}
-        />
+
+        {isDateOnly ? (
+          <CalendarGrid
+            selectedDates={new Set()}
+            onDatesChange={() => {}}
+            mode="availability"
+            availability={dateAvailability}
+            onAvailabilityChange={setDateAvailability}
+            allowedDates={allowedDates}
+          />
+        ) : (
+          <TimeGrid
+            slots={event?.slots || []}
+            selectedSlots={new Set()}
+            onSlotsChange={() => {}}
+            mode="availability"
+            availability={availability}
+            onAvailabilityChange={setAvailability}
+          />
+        )}
+
         <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
-          入力済み: {availability.size} スロット
+          入力済み: {currentAvailability.size} {inputUnit}
         </p>
       </div>
 

@@ -1,5 +1,19 @@
 import { useState, useEffect } from 'react';
-import type { Event, SlotAggregation } from '../types';
+import type { Event, SlotAggregation, EventSlot, EventMode } from '../types';
+
+function formatSlotDisplay(slot: EventSlot, mode: EventMode): string {
+  const date = new Date(slot.start);
+  if (mode === 'dateonly') {
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short',
+    });
+  } else {
+    return date.toLocaleString('ja-JP');
+  }
+}
 
 interface EditEventProps {
   eventId: string;
@@ -111,7 +125,21 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
       </button>
 
       <h1 style={{ marginBottom: '0.5rem' }}>{event.title}</h1>
-      {event.description && <p style={{ color: '#666', marginBottom: '1.5rem' }}>{event.description}</p>}
+      {event.description && <p style={{ color: '#666', marginBottom: '1rem' }}>{event.description}</p>}
+
+      <div
+        style={{
+          display: 'inline-block',
+          padding: '0.25rem 0.75rem',
+          background: event.mode === 'dateonly' ? '#6c757d' : '#17a2b8',
+          color: 'white',
+          borderRadius: '4px',
+          fontSize: '0.9rem',
+          marginBottom: '1.5rem',
+        }}
+      >
+        {event.mode === 'dateonly' ? '日程のみ' : '時間込み'}
+      </div>
 
       <div style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>共有URL</h2>
@@ -193,7 +221,9 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
 
       {aggregation.length > 0 && (
         <div style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>おすすめ候補日時</h2>
+          <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>
+            おすすめ候補{event.mode === 'dateonly' ? '日程' : '日時'}
+          </h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -220,7 +250,6 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
               </thead>
               <tbody>
                 {aggregation.slice(0, 10).map((agg) => {
-                  const date = new Date(agg.slot.start);
                   const confirmedIndices = event.confirmedSlots
                     ? JSON.parse(event.confirmedSlots)
                     : [];
@@ -229,7 +258,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                   return (
                     <tr key={agg.index}>
                       <td style={{ padding: '0.75rem', border: '1px solid #ddd' }}>
-                        {date.toLocaleString('ja-JP')}
+                        {formatSlotDisplay(agg.slot, event.mode)}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
                         {agg.availableCount}

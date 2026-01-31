@@ -1,5 +1,7 @@
 export type Availability = 'available' | 'maybe' | 'unavailable';
 
+export type EventMode = 'dateonly' | 'datetime';
+
 export interface TimeSlot {
   start: number; // Unix timestamp
   end: number;   // Unix timestamp
@@ -30,6 +32,7 @@ export interface Event {
   createdAt: number;
   confirmedSlots?: string; // JSON string of confirmed slot indices
   timezone: string;
+  mode: EventMode;
   slots: EventSlot[];
   responses?: ParticipantResponse[];
 }
@@ -39,6 +42,7 @@ export interface CreateEventRequest {
   description?: string;
   slots: TimeSlot[];
   timezone?: string;
+  mode?: EventMode;
 }
 
 export interface CreateResponseRequest {

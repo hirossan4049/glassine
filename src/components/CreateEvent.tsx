@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import TimeGrid from './TimeGrid';
-import type { TimeSlot } from '../types';
+import CalendarGrid from './CalendarGrid';
+import type { TimeSlot, EventMode } from '../types';
 
 interface CreateEventProps {
   onBack: () => void;
@@ -9,7 +10,9 @@ interface CreateEventProps {
 export default function CreateEvent({ onBack }: CreateEventProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [mode, setMode] = useState<EventMode>('datetime');
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,7 +22,11 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       return;
     }
 
-    if (selectedSlots.size === 0) {
+    const hasSelection = mode === 'dateonly'
+      ? selectedDates.size > 0
+      : selectedSlots.size > 0;
+
+    if (!hasSelection) {
       setError('候補日時を選択してください');
       return;
     }
@@ -28,37 +35,51 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
     setError('');
 
     try {
-      // Convert selected slots to TimeSlot array
-      const slots: TimeSlot[] = [];
-      const now = new Date();
-      const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let slots: TimeSlot[];
 
-      selectedSlots.forEach((key) => {
-        const [dayStr, hourStr, minuteStr] = key.split('-');
-        const day = parseInt(dayStr);
-        const hour = parseInt(hourStr);
-        const minute = parseInt(minuteStr);
+      if (mode === 'dateonly') {
+        // Convert selected dates to TimeSlot array
+        slots = Array.from(selectedDates).map((dateStr) => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          date.setHours(0, 0, 0, 0);
+          const start = date.getTime();
+          const end = start + (24 * 60 * 60 * 1000) - 1; // 23:59:59.999
+          return { start, end };
+        });
+      } else {
+        // Convert selected slots to TimeSlot array (existing logic)
+        slots = [];
+        const now = new Date();
+        const baseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        // Calculate date for this day (0 = Monday of current/next week)
-        const currentDay = now.getDay();
-        const daysUntilMonday = currentDay === 0 ? 1 : 1 - currentDay;
-        const monday = new Date(baseDate);
-        monday.setDate(monday.getDate() + daysUntilMonday);
-        
-        const slotDate = new Date(monday);
-        slotDate.setDate(slotDate.getDate() + day);
-        slotDate.setHours(hour, minute, 0, 0);
+        selectedSlots.forEach((key) => {
+          const [dayStr, hourStr, minuteStr] = key.split('-');
+          const day = parseInt(dayStr);
+          const hour = parseInt(hourStr);
+          const minute = parseInt(minuteStr);
 
-        const start = slotDate.getTime();
-        const end = start + 30 * 60 * 1000; // 30 minutes
+          // Calculate date for this day (0 = Monday of current/next week)
+          const currentDay = now.getDay();
+          const daysUntilMonday = currentDay === 0 ? 1 : 1 - currentDay;
+          const monday = new Date(baseDate);
+          monday.setDate(monday.getDate() + daysUntilMonday);
 
-        slots.push({ start, end });
-      });
+          const slotDate = new Date(monday);
+          slotDate.setDate(slotDate.getDate() + day);
+          slotDate.setHours(hour, minute, 0, 0);
+
+          const start = slotDate.getTime();
+          const end = start + 30 * 60 * 1000; // 30 minutes
+
+          slots.push({ start, end });
+        });
+      }
 
       const response = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, slots }),
+        body: JSON.stringify({ title, description, slots, mode }),
       });
 
       const data = await response.json() as any;
@@ -75,6 +96,9 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       setCreating(false);
     }
   };
+
+  const selectionCount = mode === 'dateonly' ? selectedDates.size : selectedSlots.size;
+  const selectionUnit = mode === 'dateonly' ? '日' : 'スロット';
 
   return (
     <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -135,18 +159,73 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
 
       <div style={{ marginBottom: '1.5rem' }}>
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          候補日時を選択 *
+          日程タイプ *
+        </label>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setMode('dateonly')}
+            style={{
+              padding: '1rem 1.5rem',
+              background: mode === 'dateonly' ? '#007bff' : '#f0f0f0',
+              color: mode === 'dateonly' ? 'white' : 'black',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ fontWeight: 'bold' }}>日程のみ</div>
+            <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.8 }}>
+              日付だけを選択
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('datetime')}
+            style={{
+              padding: '1rem 1.5rem',
+              background: mode === 'datetime' ? '#007bff' : '#f0f0f0',
+              color: mode === 'datetime' ? 'white' : 'black',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ fontWeight: 'bold' }}>時間込み</div>
+            <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.8 }}>
+              日時を選択
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+          候補{mode === 'dateonly' ? '日程' : '日時'}を選択 *
         </label>
         <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-          グリッド上をドラッグして候補時間を選択してください
+          {mode === 'dateonly'
+            ? 'カレンダー上をドラッグして候補日を選択してください'
+            : 'グリッド上をドラッグして候補時間を選択してください'}
         </p>
-        <TimeGrid 
-          slots={[]} 
-          selectedSlots={selectedSlots} 
-          onSlotsChange={setSelectedSlots} 
-        />
+
+        {mode === 'dateonly' ? (
+          <CalendarGrid
+            selectedDates={selectedDates}
+            onDatesChange={setSelectedDates}
+          />
+        ) : (
+          <TimeGrid
+            slots={[]}
+            selectedSlots={selectedSlots}
+            onSlotsChange={setSelectedSlots}
+          />
+        )}
+
         <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
-          選択中: {selectedSlots.size} スロット
+          選択中: {selectionCount} {selectionUnit}
         </p>
       </div>
 
