@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { Event, SlotAggregation, EventSlot, EventMode } from '../types';
+import type { Event, SlotAggregation, EventSlot, EventMode, ParticipantResponse } from '../types';
+import ResponseMatrix from './ResponseMatrix';
+import ResponseEditor from './ResponseEditor';
 
 function formatSlotDisplay(slot: EventSlot, mode: EventMode): string {
   const date = new Date(slot.start);
@@ -27,6 +29,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [editingResponse, setEditingResponse] = useState<ParticipantResponse | null>(null);
 
   useEffect(() => {
     loadEvent();
@@ -90,6 +93,34 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
     alert('URLをコピーしました');
   };
 
+  const handleDeleteResponse = async (responseId: number) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}/responses/${responseId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        loadEvent();
+        loadAggregation();
+      } else {
+        const data = await response.json() as any;
+        setError(data.error || '削除に失敗しました');
+      }
+    } catch (_err) {
+      setError('ネットワークエラーが発生しました');
+    }
+  };
+
+  const handleEditResponse = (response: ParticipantResponse) => {
+    setEditingResponse(response);
+  };
+
+  const handleResponseUpdated = () => {
+    setEditingResponse(null);
+    loadEvent();
+    loadAggregation();
+  };
+
   if (loading) {
     return <div style={{ padding: '2rem' }}>読み込み中...</div>;
   }
@@ -107,6 +138,18 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
 
   const viewUrl = `${window.location.origin}/v/${eventId}?token=${event.viewToken}`;
   const respondUrl = `${window.location.origin}/r/${eventId}?token=${event.viewToken}`;
+
+  // Show response editor if editing
+  if (editingResponse) {
+    return (
+      <ResponseEditor
+        event={event}
+        response={editingResponse}
+        onSave={handleResponseUpdated}
+        onCancel={() => setEditingResponse(null)}
+      />
+    );
+  }
 
   return (
     <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
@@ -207,16 +250,12 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
 
       <div style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>回答状況</h2>
-        <p>回答者数: {event.responses?.length || 0}</p>
-        {event.responses && event.responses.length > 0 && (
-          <ul style={{ listStyle: 'none', padding: 0 }}>
-            {event.responses.map((response) => (
-              <li key={response.id} style={{ padding: '0.5rem 0' }}>
-                {response.participantName}
-              </li>
-            ))}
-          </ul>
-        )}
+        <p style={{ marginBottom: '1rem' }}>回答者数: {event.responses?.length || 0}</p>
+        <ResponseMatrix
+          event={event}
+          onEditResponse={handleEditResponse}
+          onDeleteResponse={handleDeleteResponse}
+        />
       </div>
 
       {aggregation.length > 0 && (

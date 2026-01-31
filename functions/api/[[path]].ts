@@ -213,6 +213,67 @@ app.get('/events/:id/aggregation', async (c) => {
   return c.json({ aggregation });
 });
 
+// Update participant response
+app.put('/events/:id/responses/:responseId', async (c) => {
+  const eventId = c.req.param('id');
+  const responseId = c.req.param('responseId');
+  const body: CreateResponseRequest = await c.req.json();
+
+  // Check if response exists and belongs to this event
+  const responseResult = await c.env.DB.prepare(
+    'SELECT id FROM responses WHERE id = ? AND event_id = ?'
+  ).bind(responseId, eventId).first();
+
+  if (!responseResult) {
+    return c.json({ error: 'Response not found' }, 404);
+  }
+
+  // Update participant name
+  await c.env.DB.prepare(
+    'UPDATE responses SET participant_name = ? WHERE id = ?'
+  ).bind(body.participantName, responseId).run();
+
+  // Delete old slots and insert new ones
+  await c.env.DB.prepare(
+    'DELETE FROM response_slots WHERE response_id = ?'
+  ).bind(responseId).run();
+
+  for (const slot of body.slots) {
+    await c.env.DB.prepare(
+      'INSERT INTO response_slots (response_id, slot_start, slot_end, availability) VALUES (?, ?, ?, ?)'
+    ).bind(responseId, slot.start, slot.end, slot.availability).run();
+  }
+
+  return c.json({ success: true });
+});
+
+// Delete participant response
+app.delete('/events/:id/responses/:responseId', async (c) => {
+  const eventId = c.req.param('id');
+  const responseId = c.req.param('responseId');
+
+  // Check if response exists and belongs to this event
+  const responseResult = await c.env.DB.prepare(
+    'SELECT id FROM responses WHERE id = ? AND event_id = ?'
+  ).bind(responseId, eventId).first();
+
+  if (!responseResult) {
+    return c.json({ error: 'Response not found' }, 404);
+  }
+
+  // Delete response slots first (foreign key)
+  await c.env.DB.prepare(
+    'DELETE FROM response_slots WHERE response_id = ?'
+  ).bind(responseId).run();
+
+  // Delete response
+  await c.env.DB.prepare(
+    'DELETE FROM responses WHERE id = ?'
+  ).bind(responseId).run();
+
+  return c.json({ success: true });
+});
+
 // Confirm event slots
 app.post('/events/:id/confirm', async (c) => {
   const eventId = c.req.param('id');

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Event, SlotAggregation, EventSlot, EventMode } from '../types';
+import ResponseMatrix from './ResponseMatrix';
 
 function formatSlotDisplay(slot: EventSlot, mode: EventMode): string {
   const date = new Date(slot.start);
@@ -112,7 +113,8 @@ export default function ViewEvent({ eventId, token, onBack }: ViewEventProps) {
 
       <div style={{ marginBottom: '2rem' }}>
         <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>回答状況</h2>
-        <p>回答者数: {event.responses?.length || 0}</p>
+        <p style={{ marginBottom: '1rem' }}>回答者数: {event.responses?.length || 0}</p>
+        <ResponseMatrix event={event} />
       </div>
 
       {aggregation.length > 0 && (
