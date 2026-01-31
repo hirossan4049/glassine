@@ -1,5 +1,9 @@
 # Glassine デプロイメントガイド
 
+> **⚠️ 重要**: このプロジェクトは **Cloudflare Pages** でデプロイする必要があります。  
+> Workers プロジェクトとして作成すると「Hello World」が返り続けます。  
+> 詳細は [CLOUDFLARE_BEST_PRACTICES.md](./CLOUDFLARE_BEST_PRACTICES.md) を参照してください。
+
 ## Cloudflare Pagesへのデプロイ手順
 
 ### 1. Cloudflareアカウントの準備
@@ -79,21 +83,37 @@ wrangler pages deploy dist
 
 1. GitHubにリポジトリをプッシュ
 2. Cloudflare Dashboardにログイン
-3. Pages > Create a project
-4. Connect to Gitを選択
+3. **Workers & Pages** → **Create application** → **Pages** タブを選択
+   - ⚠️ **Workers** タブではなく **Pages** タブを選択してください
+4. **Connect to Git** を選択
 5. リポジトリを選択
 6. ビルド設定:
+   - Framework preset: `None`（または `Vite` を選択）
    - Build command: `npm run build`
    - Build output directory: `dist`
-   - Deploy command: `npm run deploy` (重要: `wrangler deploy`ではなく`wrangler pages deploy`を使用)
-   - Environment variables:
-     - なし（D1とKVのbindingはwrangler.tomlから自動取得）
-7. Save and Deploy
+   - Root directory: `/`（デフォルト）
+7. **Save and Deploy**
 
-> **注意**: デプロイコマンドは必ず `npm run deploy` または `wrangler pages deploy dist` を使用してください。
-> `wrangler deploy` はWorkersプロジェクト用のコマンドで、Pagesプロジェクトでは動作しません。
+> **⚠️ よくある間違い**: 
+> - `wrangler deploy` は **Workers** 用のコマンドです
+> - `wrangler pages deploy` または `npm run deploy` を使用してください
+> - Dashboard で **Workers** として作成すると「Hello World」が返り続けます
 
-### 6. 環境変数の設定（オプション）
+### 6. D1/KV バインディングの設定
+
+Pages プロジェクトを作成後、Dashboard で以下を設定:
+
+1. **Settings** → **Functions** → **D1 database bindings**
+   - Variable name: `DB`
+   - D1 database: `glassine-db` を選択
+   
+2. **Settings** → **Functions** → **KV namespace bindings**
+   - Variable name: `KV`
+   - KV namespace: 作成した namespace を選択
+
+3. 設定後、**Deployments** から再デプロイ
+
+### 7. 環境変数の設定（オプション）
 
 Cloudflare Dashboardで以下を設定可能:
 
@@ -101,7 +121,7 @@ Cloudflare Dashboardで以下を設定可能:
 - KVネームスペースのバインディング
 - カスタム環境変数（必要に応じて）
 
-### 7. カスタムドメインの設定（オプション）
+### 8. カスタムドメインの設定（オプション）
 
 1. Cloudflare Dashboard > Pages > プロジェクト
 2. Custom domains タブ
@@ -110,6 +130,28 @@ Cloudflare Dashboardで以下を設定可能:
 5. DNSレコードが自動設定される
 
 ## トラブルシューティング
+
+### 🚨 「Hello World」が返り続ける
+
+**原因**: Cloudflare Dashboard で **Workers** プロジェクトとして作成された可能性があります。
+
+**解決方法**:
+
+1. Cloudflare Dashboard → **Workers & Pages** を開く
+2. 該当プロジェクトを確認
+   - プロジェクト名の横に「Worker」と表示されていたら Workers プロジェクトです
+3. **Workers プロジェクトを削除**
+4. **Pages として再作成**:
+   - **Create application** → **Pages** タブ
+   - **Connect to Git** でリポジトリを再接続
+5. D1/KV バインディングを再設定（上記セクション参照）
+
+**確認方法**:
+```bash
+# ローカルで Pages として正しく動作するか確認
+npm run build
+npx wrangler pages dev dist
+```
 
 ### D1データベースにアクセスできない
 
