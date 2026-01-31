@@ -1,0 +1,30 @@
+{
+  "name": "glassine",
+  "version": "0.1.0",
+  "description": "Login-free schedule coordination tool built on Cloudflare infrastructure",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "oxlint",
+    "wrangler:dev": "wrangler pages dev dist --compatibility-date=2024-01-01",
+    "wrangler:deploy": "wrangler pages deploy dist"
+  },
+  "dependencies": {
+    "hono": "^4.6.11",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "oxlint": "^0.12.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "wrangler": "^3.94.0"
+  }
+}
