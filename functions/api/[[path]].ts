@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/cloudflare-pages';
+import { Resvg } from '@cf-wasm/resvg';
 import type { Env, Event, CreateEventRequest, CreateResponseRequest, ConfirmEventRequest, SlotAggregation } from '../../src/types';
 
 const app = new Hono<{ Bindings: Env }>().basePath('/api');
@@ -274,7 +275,7 @@ app.delete('/events/:id/responses/:responseId', async (c) => {
   return c.json({ success: true });
 });
 
-// Generate OGP image for event
+// Generate OGP image for event (PNG)
 app.get('/events/:id/og', async (c) => {
   const eventId = c.req.param('id');
 
@@ -290,16 +291,22 @@ app.get('/events/:id/og', async (c) => {
   const description = eventResult.description || '';
   const mode = eventResult.mode === 'dateonly' ? '日程調整' : '日時調整';
 
-  // Escape HTML entities
-  const escapeHtml = (str: string) =>
-    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  // Escape XML entities
+  const escapeXml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-  // Truncate title if too long
-  const displayTitle = title.length > 20 ? title.substring(0, 20) + '...' : title;
-  const displayDesc = description.length > 40 ? description.substring(0, 40) + '...' : description;
+  // Truncate for display
+  const displayTitle = title.length > 18 ? title.substring(0, 18) + '...' : title;
+  const displayDesc = description.length > 35 ? description.substring(0, 35) + '...' : description;
 
-  const svg = `
-<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  try {
+    // Fetch Japanese font
+    const fontData = await fetch(
+      'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-jp@latest/japanese-500-normal.woff2'
+    ).then(res => res.arrayBuffer());
+
+    // Generate SVG with the loaded font
+    const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#667eea"/>
@@ -307,32 +314,24 @@ app.get('/events/:id/og', async (c) => {
     </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#bg)"/>
-  <rect x="40" y="40" width="1120" height="550" rx="20" fill="white" opacity="0.95"/>
+  <rect x="40" y="40" width="1120" height="550" rx="20" fill="white" fill-opacity="0.95"/>
 
-  <!-- App name -->
-  <text x="100" y="120" font-family="system-ui, sans-serif" font-size="32" fill="#667eea" font-weight="bold">
-    Glassine
-  </text>
-  <text x="250" y="120" font-family="system-ui, sans-serif" font-size="24" fill="#888">
-    - ${escapeHtml(mode)}
-  </text>
+  <!-- App name and mode -->
+  <text x="100" y="120" font-family="Noto Sans JP" font-size="36" fill="#667eea" font-weight="500">Glassine</text>
+  <text x="270" y="120" font-family="Noto Sans JP" font-size="28" fill="#888"> - ${escapeXml(mode)}</text>
 
   <!-- Title -->
-  <text x="100" y="280" font-family="system-ui, sans-serif" font-size="72" fill="#333" font-weight="bold">
-    ${escapeHtml(displayTitle)}
-  </text>
+  <text x="100" y="280" font-family="Noto Sans JP" font-size="64" fill="#333" font-weight="500">${escapeXml(displayTitle)}</text>
 
   <!-- Description -->
-  ${displayDesc ? `<text x="100" y="360" font-family="system-ui, sans-serif" font-size="32" fill="#666">${escapeHtml(displayDesc)}</text>` : ''}
+  ${displayDesc ? `<text x="100" y="360" font-family="Noto Sans JP" font-size="32" fill="#666">${escapeXml(displayDesc)}</text>` : ''}
 
-  <!-- Call to action -->
-  <rect x="100" y="460" width="300" height="60" rx="30" fill="#667eea"/>
-  <text x="250" y="500" font-family="system-ui, sans-serif" font-size="24" fill="white" text-anchor="middle" font-weight="bold">
-    回答する
-  </text>
+  <!-- Call to action button -->
+  <rect x="100" y="460" width="200" height="60" rx="30" fill="#667eea"/>
+  <text x="200" y="500" font-family="Noto Sans JP" font-size="24" fill="white" text-anchor="middle" font-weight="500">Open</text>
 
   <!-- Calendar icon -->
-  <g transform="translate(950, 400)">
+  <g transform="translate(950, 380)">
     <rect x="0" y="20" width="120" height="100" rx="10" fill="none" stroke="#667eea" stroke-width="4"/>
     <rect x="0" y="20" width="120" height="30" rx="10" fill="#667eea"/>
     <line x1="30" y1="0" x2="30" y2="30" stroke="#667eea" stroke-width="6" stroke-linecap="round"/>
@@ -342,14 +341,37 @@ app.get('/events/:id/og', async (c) => {
     <circle cx="40" cy="105" r="8" fill="#dc3545"/>
     <circle cx="80" cy="105" r="8" fill="#28a745"/>
   </g>
-</svg>`.trim();
+</svg>`;
 
-  return new Response(svg, {
-    headers: {
-      'Content-Type': 'image/svg+xml',
-      'Cache-Control': 'public, max-age=86400',
-    },
-  });
+    // Convert SVG to PNG using @cf-wasm/resvg with font
+    const resvg = new Resvg(svg, {
+      font: {
+        fontBuffers: [new Uint8Array(fontData)],
+      },
+    });
+    const pngData = resvg.render();
+    const pngBuffer = pngData.asPng();
+
+    return new Response(pngBuffer.buffer as ArrayBuffer, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
+  } catch (error) {
+    console.error('OGP generation error:', error);
+    // Fallback to simple SVG if PNG generation fails
+    const fallbackSvg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="630" fill="#667eea"/>
+      <text x="600" y="315" font-size="48" fill="white" text-anchor="middle">${escapeXml(title)}</text>
+    </svg>`;
+    return new Response(fallbackSvg, {
+      headers: {
+        'Content-Type': 'image/svg+xml',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
+  }
 });
 
 // Get event info for OGP (public, no token required)

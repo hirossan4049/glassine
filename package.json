@@ -17,6 +17,7 @@
     "wrangler:deploy": "wrangler pages deploy dist"
   },
   "dependencies": {
+    "@cf-wasm/resvg": "^0.3.3",
     "hono": "^4.6.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
