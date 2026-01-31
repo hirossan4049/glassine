@@ -1,0 +1,9 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#007bff"/>
+  <text x="600" y="280" font-family="Arial, sans-serif" font-size="80" fill="white" text-anchor="middle" font-weight="bold">
+    Glassine
+  </text>
+  <text x="600" y="380" font-family="Arial, sans-serif" font-size="40" fill="white" text-anchor="middle">
+    ログイン不要の日程調整ツール
+  </text>
+</svg>
