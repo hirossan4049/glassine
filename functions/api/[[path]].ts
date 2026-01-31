@@ -325,22 +325,6 @@ app.get('/events/:id/og', async (c) => {
 
   <!-- Description -->
   ${displayDesc ? `<text x="100" y="360" font-family="Noto Sans JP" font-size="32" fill="#666">${escapeXml(displayDesc)}</text>` : ''}
-
-  <!-- Call to action button -->
-  <rect x="100" y="460" width="200" height="60" rx="30" fill="#667eea"/>
-  <text x="200" y="500" font-family="Noto Sans JP" font-size="24" fill="white" text-anchor="middle" font-weight="500">Open</text>
-
-  <!-- Calendar icon -->
-  <g transform="translate(950, 380)">
-    <rect x="0" y="20" width="120" height="100" rx="10" fill="none" stroke="#667eea" stroke-width="4"/>
-    <rect x="0" y="20" width="120" height="30" rx="10" fill="#667eea"/>
-    <line x1="30" y1="0" x2="30" y2="30" stroke="#667eea" stroke-width="6" stroke-linecap="round"/>
-    <line x1="90" y1="0" x2="90" y2="30" stroke="#667eea" stroke-width="6" stroke-linecap="round"/>
-    <circle cx="40" cy="80" r="8" fill="#28a745"/>
-    <circle cx="80" cy="80" r="8" fill="#ffc107"/>
-    <circle cx="40" cy="105" r="8" fill="#dc3545"/>
-    <circle cx="80" cy="105" r="8" fill="#28a745"/>
-  </g>
 </svg>`;
 
     // Convert SVG to PNG using @cf-wasm/resvg with font
