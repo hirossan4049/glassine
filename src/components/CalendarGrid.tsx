@@ -416,22 +416,23 @@ export default function CalendarGrid({
         <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>
           Shiftで範囲 / 曜日ヘッダーで列まとめて
         </div>
-        {lastClickedKey && (
-          <div
-            style={{
-              marginLeft: 'auto',
-              fontSize: '0.85rem',
-              color: palette.text,
-              background: palette.layer,
-              padding: '0.35rem 0.6rem',
-              borderRadius: 0,
-              border: `1px solid ${palette.border}`,
-              boxShadow: 'none',
-            }}
-          >
-            {mode === 'select' ? '選択日数' : '設定日数'}: {mode === 'select' ? selectedDates.size : availability.size} / 起点 {lastClickedKey}
-          </div>
-        )}
+        <div
+          style={{
+            marginLeft: 'auto',
+            fontSize: '0.85rem',
+            color: palette.text,
+            background: palette.layer,
+            padding: '0.35rem 0.6rem',
+            borderRadius: 0,
+            border: `1px solid ${palette.border}`,
+            boxShadow: 'none',
+            visibility: lastClickedKey ? 'visible' : 'hidden',
+            minWidth: '220px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {mode === 'select' ? '選択日数' : '設定日数'}: {mode === 'select' ? selectedDates.size : availability.size} / 起点 {lastClickedKey || '----/--/--'}
+        </div>
       </div>
 
       {mode === 'availability' && (
