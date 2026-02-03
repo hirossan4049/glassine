@@ -2,6 +2,21 @@ import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import { Button, Layer } from '@carbon/react';
 import type { TimeSlot, Availability } from '../types';
 
+// Hook to detect mobile viewport
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 interface TimeGridProps {
   slots: TimeSlot[];
   selectedSlots: Set<string>;
@@ -110,6 +125,7 @@ export default function TimeGrid({
   days = DEFAULT_DAYS,
   startDate,
 }: TimeGridProps) {
+  const isMobile = useIsMobile();
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
@@ -117,6 +133,10 @@ export default function TimeGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const dragActionRef = useRef<'add' | 'remove'>('add'); // current drag action in select mode
   const dragAxisRef = useRef<'vertical' | 'horizontal' | null>(null); // lock drag axis after first move
+
+  // Responsive cell width - scales with viewport on mobile
+  const cellWidth = isMobile ? 'minmax(48px, 1fr)' : '72px';
+  const timeCellWidth = isMobile ? '56px' : '72px';
 
   const getDayKeys = useCallback(
     (dayIndex: number) => {
@@ -292,18 +312,22 @@ export default function TimeGrid({
           boxShadow: 'none',
         }}
       >
-      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '0.95rem', color: palette.text }}>💡 Excelライクにドラッグ + ペイント塗り</div>
-        <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
+      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: isMobile ? '0.5rem' : '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: palette.text }}>
+          💡 {isMobile ? 'ドラッグで塗る' : 'Excelライクにドラッグ + ペイント塗り'}
+        </div>
+        {!isMobile && (
+          <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
+        )}
         {lastClickedKey && (
           <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}` }}>
-            {mode === 'select' ? '選択枠' : '設定枠'}: {mode === 'select' ? selectedSlots.size : availability.size} / 起点 {lastClickedKey}
+            {isMobile ? (mode === 'select' ? selectedSlots.size : availability.size) : `${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
           </div>
         )}
       </div>
       {mode === 'availability' && (
-        <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, color: palette.text }}>ブラシ:</span>
+        <div style={{ marginBottom: isMobile ? '0.75rem' : '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, color: palette.text, fontSize: isMobile ? '0.85rem' : undefined }}>ブラシ:</span>
           <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
             {brushOptions.map((option) => (
               <Button
@@ -311,9 +335,10 @@ export default function TimeGrid({
                 kind={selectedBrush === option.value ? 'primary' : 'tertiary'}
                 size="sm"
                 onClick={() => setSelectedBrush(option.value)}
+                style={{ minWidth: isMobile ? '44px' : undefined, padding: isMobile ? '0.5rem' : undefined }}
               >
-                <span style={{ fontSize: '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: '0.25rem' }}>{option.symbol}</span>
-                {option.label}
+                <span style={{ fontSize: isMobile ? '1.2rem' : '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: isMobile ? 0 : '0.25rem' }}>{option.symbol}</span>
+                {!isMobile && option.label}
               </Button>
             ))}
           </div>
@@ -324,11 +349,13 @@ export default function TimeGrid({
         ref={gridRef}
         style={{
           display: 'grid',
-          gridTemplateColumns: `72px repeat(${days.length}, 72px)`,
+          gridTemplateColumns: isMobile
+            ? `${timeCellWidth} repeat(${days.length}, ${cellWidth})`
+            : `72px repeat(${days.length}, 72px)`,
           gap: '1px',
           background: palette.border,
           border: `1px solid ${palette.border}`,
-          minWidth: 'fit-content',
+          minWidth: isMobile ? '100%' : 'fit-content',
           borderRadius: 0,
           overflow: 'hidden',
         }}
@@ -418,7 +445,7 @@ export default function TimeGrid({
                       data-key={key}
                       style={{
                         background: getCellColor(key),
-                        height: '32px',
+                        height: isMobile ? '40px' : '32px',
                         cursor: 'pointer',
                         transition: 'background 0.08s, box-shadow 0.12s, transform 0.08s',
                         boxShadow:

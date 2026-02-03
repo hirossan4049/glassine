@@ -1,6 +1,22 @@
+import { useState, useEffect } from 'react';
 import { Button, Tile } from '@carbon/react';
 import { Edit, TrashCan } from '@carbon/react/icons';
 import type { Event, EventSlot, ParticipantResponse, Availability, EventMode } from '../types';
+
+// Hook to detect mobile viewport
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+}
 
 interface ResponseMatrixProps {
   event: Event;
@@ -48,6 +64,7 @@ function findResponseAvailability(
 }
 
 export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse }: ResponseMatrixProps) {
+  const isMobile = useIsMobile();
   const responses = event.responses || [];
   const slots = event.slots || [];
 
@@ -84,24 +101,28 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
     return { available, maybe, unavailable };
   });
 
+  const stickyWidth = isMobile ? '80px' : '120px';
+  const cellPadding = isMobile ? '0.35rem' : '0.5rem';
+  const cellMinWidth = isMobile ? (isDateOnly ? '60px' : '40px') : (isDateOnly ? '80px' : '50px');
+
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 'max-content' }}>
+    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 'max-content', fontSize: isMobile ? '0.85rem' : undefined }}>
         <thead>
           {!isDateOnly && (
             <tr>
               <th
                 style={{
-                  padding: '0.5rem',
+                  padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
                   background: 'var(--cds-layer-02)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
-                  minWidth: '120px',
+                  minWidth: stickyWidth,
                 }}
               >
-                参加者
+                {isMobile ? '' : '参加者'}
               </th>
               {Array.from(slotsByDate.entries()).map(([dateKey, dateSlots]) => {
                 const header = formatSlotHeader(dateSlots[0], event.mode);
@@ -110,11 +131,12 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                     key={dateKey}
                     colSpan={dateSlots.length}
                     style={{
-                      padding: '0.5rem',
+                      padding: cellPadding,
                       border: '1px solid var(--cds-border-subtle)',
                       background: 'var(--cds-layer-03)',
                       textAlign: 'center',
                       fontWeight: 'bold',
+                      fontSize: isMobile ? '0.8rem' : undefined,
                     }}
                   >
                     {header.date}
@@ -127,27 +149,28 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
             {isDateOnly && (
               <th
                 style={{
-                  padding: '0.5rem',
+                  padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
                   background: 'var(--cds-layer-02)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
-                  minWidth: '120px',
+                  minWidth: stickyWidth,
                 }}
               >
-                参加者
+                {isMobile ? '' : '参加者'}
               </th>
             )}
             {!isDateOnly && (
               <th
                 style={{
-                  padding: '0.5rem',
+                  padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
                   background: 'var(--cds-layer-02)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
+                  minWidth: stickyWidth,
                 }}
               />
             )}
@@ -157,12 +180,12 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                 <th
                   key={i}
                   style={{
-                    padding: '0.5rem',
+                    padding: cellPadding,
                     border: '1px solid var(--cds-border-subtle)',
                     background: 'var(--cds-layer-02)',
                     textAlign: 'center',
-                    fontSize: '0.85rem',
-                    minWidth: isDateOnly ? '80px' : '50px',
+                    fontSize: isMobile ? '0.75rem' : '0.85rem',
+                    minWidth: cellMinWidth,
                   }}
                 >
                   {isDateOnly ? header.date : header.time}
@@ -175,13 +198,15 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
           <tr style={{ background: 'var(--cds-layer-01)' }}>
             <td
               style={{
-                padding: '0.5rem',
+                padding: cellPadding,
                 border: '1px solid var(--cds-border-subtle)',
                 fontWeight: 'bold',
                 position: 'sticky',
                 left: 0,
                 background: 'var(--cds-layer-01)',
                 zIndex: 1,
+                minWidth: stickyWidth,
+                fontSize: isMobile ? '0.75rem' : undefined,
               }}
             >
               集計
@@ -190,16 +215,22 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
               <td
                 key={i}
                 style={{
-                  padding: '0.25rem',
+                  padding: isMobile ? '0.2rem' : '0.25rem',
                   border: '1px solid var(--cds-border-subtle)',
                   textAlign: 'center',
-                  fontSize: '0.75rem',
+                  fontSize: isMobile ? '0.65rem' : '0.75rem',
                   lineHeight: 1.2,
                 }}
               >
-                <div style={{ color: 'var(--glassine-available)' }}>○{total.available}</div>
-                <div style={{ color: 'var(--glassine-maybe)' }}>△{total.maybe}</div>
-                <div style={{ color: 'var(--glassine-unavailable)' }}>×{total.unavailable}</div>
+                {isMobile ? (
+                  <div style={{ color: 'var(--glassine-available)' }}>{total.available}</div>
+                ) : (
+                  <>
+                    <div style={{ color: 'var(--glassine-available)' }}>○{total.available}</div>
+                    <div style={{ color: 'var(--glassine-maybe)' }}>△{total.maybe}</div>
+                    <div style={{ color: 'var(--glassine-unavailable)' }}>×{total.unavailable}</div>
+                  </>
+                )}
               </td>
             ))}
           </tr>
@@ -207,17 +238,21 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
             <tr key={response.id}>
               <td
                 style={{
-                  padding: '0.5rem',
+                  padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
                   position: 'sticky',
                   left: 0,
                   background: 'var(--cds-layer)',
                   zIndex: 1,
                   whiteSpace: 'nowrap',
+                  minWidth: stickyWidth,
+                  maxWidth: isMobile ? '100px' : undefined,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontWeight: 'bold' }}>{response.participantName}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.25rem' : '0.5rem' }}>
+                  <span style={{ fontWeight: 'bold', fontSize: isMobile ? '0.8rem' : undefined, overflow: 'hidden', textOverflow: 'ellipsis' }}>{response.participantName}</span>
                   {onEditResponse && (
                     <Button
                       kind="ghost"
@@ -226,9 +261,10 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                       renderIcon={Edit}
                       iconDescription="編集"
                       onClick={() => onEditResponse(response)}
+                      style={isMobile ? { minHeight: '28px', padding: '0.25rem' } : undefined}
                     />
                   )}
-                  {onDeleteResponse && response.id && (
+                  {onDeleteResponse && response.id && !isMobile && (
                     <Button
                       kind="danger--ghost"
                       size="sm"
@@ -250,10 +286,10 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                   <td
                     key={i}
                     style={{
-                      padding: '0.5rem',
+                      padding: cellPadding,
                       border: '1px solid var(--cds-border-subtle)',
                       textAlign: 'center',
-                      fontSize: '1.2rem',
+                      fontSize: isMobile ? '1rem' : '1.2rem',
                       color: getAvailabilityColor(availability),
                       fontWeight: 'bold',
                     }}

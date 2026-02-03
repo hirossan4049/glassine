@@ -21,6 +21,21 @@ import type { Event, SlotAggregation, EventSlot, EventMode, ParticipantResponse 
 import ResponseMatrix from './ResponseMatrix';
 import ResponseEditor from './ResponseEditor';
 
+// Hook to detect mobile viewport
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 function formatSlotDisplay(slot: EventSlot, mode: EventMode): string {
   const date = new Date(slot.start);
   if (mode === 'dateonly') {
@@ -42,6 +57,7 @@ interface EditEventProps {
 }
 
 export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
+  const isMobile = useIsMobile();
   const [event, setEvent] = useState<Event | null>(null);
   const [aggregation, setAggregation] = useState<SlotAggregation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,14 +190,20 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
     );
   }
 
-  const headers = [
-    { key: 'datetime', header: '日時' },
-    { key: 'available', header: '○' },
-    { key: 'maybe', header: '△' },
-    { key: 'unavailable', header: '×' },
-    { key: 'score', header: 'スコア' },
-    { key: 'action', header: '操作' },
-  ];
+  const headers = isMobile
+    ? [
+        { key: 'datetime', header: '日時' },
+        { key: 'available', header: '○' },
+        { key: 'action', header: '' },
+      ]
+    : [
+        { key: 'datetime', header: '日時' },
+        { key: 'available', header: '○' },
+        { key: 'maybe', header: '△' },
+        { key: 'unavailable', header: '×' },
+        { key: 'score', header: 'スコア' },
+        { key: 'action', header: '操作' },
+      ];
 
   const rows = aggregation.slice(0, 10).map((agg) => {
     const confirmedIndices = event.confirmedSlots
@@ -234,14 +256,14 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
           <Stack gap={4}>
             <div>
               <FormLabel>参加者用URL（回答）</FormLabel>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
                 <TextInput
                   id="respond-url"
                   labelText=""
                   hideLabel
                   value={respondUrl}
                   readOnly
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto' }}
                 />
                 <CopyButton
                   onClick={() => navigator.clipboard.writeText(respondUrl)}
@@ -251,14 +273,14 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
             </div>
             <div>
               <FormLabel>閲覧用URL</FormLabel>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
                 <TextInput
                   id="view-url"
                   labelText=""
                   hideLabel
                   value={viewUrl}
                   readOnly
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto' }}
                 />
                 <CopyButton
                   onClick={() => navigator.clipboard.writeText(viewUrl)}
@@ -313,8 +335,11 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                                     renderIcon={rowData.isConfirmed ? Checkmark : undefined}
                                     onClick={() => handleConfirm([rowData.index])}
                                     disabled={confirming || rowData.isConfirmed}
+                                    hasIconOnly={isMobile && !rowData.isConfirmed}
+                                    iconDescription={isMobile ? '確定' : undefined}
+                                    style={isMobile ? { minWidth: '36px', padding: '0.5rem' } : undefined}
                                   >
-                                    {rowData.isConfirmed ? '確定済み' : '確定'}
+                                    {isMobile ? (rowData.isConfirmed ? '✓' : '') : (rowData.isConfirmed ? '確定済み' : '確定')}
                                   </Button>
                                 </TableCell>
                               );

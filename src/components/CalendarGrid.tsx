@@ -2,6 +2,21 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button, Layer } from '@carbon/react';
 import type { Availability } from '../types';
 
+// Hook to detect mobile viewport
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+}
+
 interface CalendarGridProps {
   selectedDates: Set<string>;
   onDatesChange: (dates: Set<string>) => void;
@@ -94,6 +109,7 @@ export default function CalendarGrid({
   onAvailabilityChange,
   allowedDates,
 }: CalendarGridProps) {
+  const isMobile = useIsMobile();
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [baseDate, setBaseDate] = useState(() => new Date());
@@ -223,10 +239,11 @@ export default function CalendarGrid({
       <div
         style={{
           flex: 1,
-          minWidth: '280px',
+          minWidth: isMobile ? '100%' : '280px',
+          maxWidth: isMobile ? '100%' : undefined,
           background: palette.layerAlt,
           borderRadius: 0,
-          padding: '0.75rem',
+          padding: isMobile ? '0.5rem' : '0.75rem',
           border: `1px solid ${palette.border}`,
           boxShadow: 'none',
         }}
@@ -401,21 +418,23 @@ export default function CalendarGrid({
       <div
         style={{
           display: 'flex',
-          gap: '0.75rem',
+          gap: isMobile ? '0.5rem' : '0.75rem',
           alignItems: 'center',
           flexWrap: 'wrap',
-          padding: '0.75rem',
+          padding: isMobile ? '0.5rem' : '0.75rem',
           borderRadius: 0,
           background: palette.layerAlt,
           border: `1px dashed ${palette.border}`,
         }}
       >
-        <div style={{ fontSize: '0.95rem', color: palette.text }}>
-          💡 Excelドラッグ + ペイント塗りのハイブリッド
+        <div style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: palette.text }}>
+          💡 {isMobile ? 'ドラッグで塗る' : 'Excelドラッグ + ペイント塗りのハイブリッド'}
         </div>
-        <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>
-          Shiftで範囲 / 曜日ヘッダーで列まとめて
-        </div>
+        {!isMobile && (
+          <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>
+            Shiftで範囲 / 曜日ヘッダーで列まとめて
+          </div>
+        )}
         <div
           style={{
             marginLeft: 'auto',
@@ -427,17 +446,17 @@ export default function CalendarGrid({
             border: `1px solid ${palette.border}`,
             boxShadow: 'none',
             visibility: lastClickedKey ? 'visible' : 'hidden',
-            minWidth: '220px',
+            minWidth: isMobile ? 'auto' : '220px',
             whiteSpace: 'nowrap',
           }}
         >
-          {mode === 'select' ? '選択日数' : '設定日数'}: {mode === 'select' ? selectedDates.size : availability.size} / 起点 {lastClickedKey || '----/--/--'}
+          {isMobile ? (mode === 'select' ? selectedDates.size : availability.size) : `${mode === 'select' ? '選択日数' : '設定日数'}: ${mode === 'select' ? selectedDates.size : availability.size} / 起点 ${lastClickedKey || '----/--/--'}`}
         </div>
       </div>
 
       {mode === 'availability' && (
-        <div style={{ margin: '1rem 0 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, color: palette.text }}>ブラシ:</span>
+        <div style={{ margin: isMobile ? '0.75rem 0 0.5rem' : '1rem 0 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, color: palette.text, fontSize: isMobile ? '0.85rem' : undefined }}>ブラシ:</span>
           <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
             {brushOptions.map((option) => (
               <Button
@@ -445,58 +464,63 @@ export default function CalendarGrid({
                 kind={selectedBrush === option.value ? 'primary' : 'tertiary'}
                 size="sm"
                 onClick={() => setSelectedBrush(option.value)}
+                style={{ minWidth: isMobile ? '44px' : undefined, padding: isMobile ? '0.5rem' : undefined }}
               >
-                <span style={{ fontSize: '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: '0.25rem' }}>{option.symbol}</span>
-                {option.label}
+                <span style={{ fontSize: isMobile ? '1.2rem' : '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: isMobile ? 0 : '0.25rem' }}>{option.symbol}</span>
+                {!isMobile && option.label}
               </Button>
             ))}
           </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1rem 0' }}>
-        <Button kind="tertiary" size="md" onClick={() => navigateMonth(-1)}>
-          ← 前月
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: isMobile ? '0.75rem 0' : '1rem 0', gap: '0.5rem' }}>
+        <Button kind="tertiary" size={isMobile ? 'sm' : 'md'} onClick={() => navigateMonth(-1)}>
+          ← {isMobile ? '' : '前月'}
         </Button>
-        <div
-          style={{
-            padding: '0.35rem 0.75rem',
-            background: palette.layerAlt,
-            borderRadius: 0,
-            border: `1px solid ${palette.border}`,
-            color: palette.textSubtle,
-            fontSize: '0.9rem',
-          }}
-        >
-          ペイントツール感覚で日付を塗ってください
+        {!isMobile && (
+          <div
+            style={{
+              padding: '0.35rem 0.75rem',
+              background: palette.layerAlt,
+              borderRadius: 0,
+              border: `1px solid ${palette.border}`,
+              color: palette.textSubtle,
+              fontSize: '0.9rem',
+            }}
+          >
+            ペイントツール感覚で日付を塗ってください
+          </div>
+        )}
+        <Button kind="tertiary" size={isMobile ? 'sm' : 'md'} onClick={() => navigateMonth(1)}>
+          {isMobile ? '' : '翌月'} →
+        </Button>
+      </div>
+
+      {!isMobile && (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', color: palette.textSubtle }}>曜日列まとめ塗り:</span>
+          {WEEKDAYS.map((day, idx) => {
+            const keys = collectWeekdayKeys(idx);
+            const disabled = keys.length === 0;
+            return (
+              <Button
+                key={day}
+                kind="ghost"
+                size="sm"
+                disabled={disabled}
+                onClick={() => applyKeys(keys, resolveBulkAction(keys))}
+              >
+                {day}
+              </Button>
+            );
+          })}
         </div>
-        <Button kind="tertiary" size="md" onClick={() => navigateMonth(1)}>
-          翌月 →
-        </Button>
-      </div>
+      )}
 
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.85rem', color: palette.textSubtle }}>曜日列まとめ塗り:</span>
-        {WEEKDAYS.map((day, idx) => {
-          const keys = collectWeekdayKeys(idx);
-          const disabled = keys.length === 0;
-          return (
-            <Button
-              key={day}
-              kind="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={() => applyKeys(keys, resolveBulkAction(keys))}
-            >
-              {day}
-            </Button>
-          );
-        })}
-      </div>
-
-      <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: isMobile ? '0.75rem' : '1.25rem', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
         {renderMonth(month1.year, month1.month, month1Days)}
-        {renderMonth(month2.year, month2.month, month2Days)}
+        {!isMobile && renderMonth(month2.year, month2.month, month2Days)}
       </div>
       </div>
     </Layer>

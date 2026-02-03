@@ -57,3 +57,53 @@
     text-decoration: underline;
   }
 }
+
+// ======================
+// Mobile-first Responsive
+// ======================
+
+// Breakpoints
+$breakpoint-sm: 480px;
+$breakpoint-md: 768px;
+
+// Mobile-specific overrides
+@media (max-width: $breakpoint-md) {
+  .glassine-page {
+    padding: 0.75rem;
+  }
+
+  .glassine-home {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: $breakpoint-sm) {
+  .glassine-page {
+    padding: 0.5rem;
+  }
+
+  .glassine-home {
+    padding: 0.75rem;
+  }
+}
+
+// Hide on mobile utility
+.glassine-hide-mobile {
+  @media (max-width: $breakpoint-md) {
+    display: none !important;
+  }
+}
+
+// Show only on mobile utility
+.glassine-show-mobile {
+  display: none !important;
+  @media (max-width: $breakpoint-md) {
+    display: block !important;
+  }
+}
+
+// Touch-friendly tap targets
+.glassine-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
