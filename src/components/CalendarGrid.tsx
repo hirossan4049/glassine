@@ -14,17 +14,17 @@ interface CalendarGridProps {
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 const palette = {
-  layer: 'var(--cds-layer-01)',
-  layerAlt: 'var(--cds-layer-02)',
-  border: 'var(--cds-border-subtle)',
-  borderStrong: 'var(--cds-border-strong)',
-  text: 'var(--cds-text-primary)',
-  textSubtle: 'var(--cds-text-secondary)',
-  accent: 'var(--cds-interactive)',
-  accentPressed: 'var(--cds-interactive-pressed)',
-  available: 'var(--cds-available)',
-  maybe: 'var(--cds-maybe)',
-  unavailable: 'var(--cds-unavailable)',
+  layer: 'var(--cds-layer-01, #ffffff)',
+  layerAlt: 'var(--cds-layer-02, #f4f4f4)',
+  border: 'var(--cds-border-subtle-00, #e0e0e0)',
+  borderStrong: 'var(--cds-border-strong-01, #8d8d8d)',
+  text: 'var(--cds-text-primary, #161616)',
+  textSubtle: 'var(--cds-text-secondary, #525252)',
+  accent: 'var(--cds-link-primary, #0f62fe)',
+  accentPressed: 'var(--cds-link-primary-hover, #0043ce)',
+  available: 'var(--glassine-available, #24a148)',
+  maybe: 'var(--glassine-maybe, #f1c21b)',
+  unavailable: 'var(--glassine-unavailable, #da1e28)',
 };
 
 function dateKey(date: Date): string {
@@ -305,13 +305,12 @@ export default function CalendarGrid({
                   cursor: isPastDate(date) || (allowedDates && !allowedDates.has(key)) ? 'not-allowed' : 'pointer',
                   color: getTextColor(key, date),
                   fontWeight: isToday ? 800 : 600,
-                  border: isToday ? `2px solid ${palette.accent}` : `1px solid ${palette.border}`,
                   boxSizing: 'border-box',
                   fontSize: '0.95rem',
-                  transition: 'transform 80ms ease, box-shadow 120ms ease, background 120ms ease',
-                  boxShadow: isToday ? '0 0 0 2px rgba(15,98,254,0.12)' : 'none',
+                  transition: 'background 120ms ease',
+                  outline: isToday ? `2px solid ${palette.accent}` : 'none',
+                  outlineOffset: '-2px',
                   position: 'relative',
-                  overflow: 'hidden',
                 }}
               >
                 <span
@@ -379,11 +378,11 @@ export default function CalendarGrid({
     [selectedDates]
   );
 
-  const brushOptions: { value: Availability | 'clear'; label: string; color: string; symbol: string }[] = [
-    { value: 'available', label: '参加可能', color: '#28a745', symbol: '○' },
-    { value: 'maybe', label: '参加可能かも', color: '#ffc107', symbol: '△' },
-    { value: 'unavailable', label: '参加不可', color: '#dc3545', symbol: '×' },
-    { value: 'clear', label: 'クリア', color: '#fff', symbol: '消' },
+  const brushOptions: { value: Availability | 'clear'; label: string; symbol: string; symbolColor: string }[] = [
+    { value: 'available', label: '参加可能', symbol: '○', symbolColor: 'var(--glassine-available)' },
+    { value: 'maybe', label: '参加可能かも', symbol: '△', symbolColor: 'var(--glassine-maybe)' },
+    { value: 'unavailable', label: '参加不可', symbol: '×', symbolColor: 'var(--glassine-unavailable)' },
+    { value: 'clear', label: 'クリア', symbol: '−', symbolColor: 'var(--cds-text-secondary)' },
   ];
 
   return (
@@ -445,10 +444,9 @@ export default function CalendarGrid({
                 kind={selectedBrush === option.value ? 'primary' : 'tertiary'}
                 size="sm"
                 onClick={() => setSelectedBrush(option.value)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: option.value === 'clear' ? palette.layer : option.color, borderRadius: 0 }}
               >
-                <span style={{ fontSize: '1.1rem', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.08))' }}>{option.symbol}</span>
-                <span>{option.label}</span>
+                <span style={{ fontSize: '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: '0.25rem' }}>{option.symbol}</span>
+                {option.label}
               </Button>
             ))}
           </div>

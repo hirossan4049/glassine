@@ -17,16 +17,16 @@ const DEFAULT_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 9); // 9:00 - 23:00
 
 const palette = {
-  layer: 'var(--cds-layer-01)',
-  layerAlt: 'var(--cds-layer-02)',
-  border: 'var(--cds-border-subtle)',
-  borderStrong: 'var(--cds-border-strong)',
-  text: 'var(--cds-text-primary)',
-  textSubtle: 'var(--cds-text-secondary)',
-  accent: 'var(--cds-interactive)',
-  available: 'var(--cds-available)',
-  maybe: 'var(--cds-maybe)',
-  unavailable: 'var(--cds-unavailable)',
+  layer: 'var(--cds-layer-01, #ffffff)',
+  layerAlt: 'var(--cds-layer-02, #f4f4f4)',
+  border: 'var(--cds-border-subtle-00, #e0e0e0)',
+  borderStrong: 'var(--cds-border-strong-01, #8d8d8d)',
+  text: 'var(--cds-text-primary, #161616)',
+  textSubtle: 'var(--cds-text-secondary, #525252)',
+  accent: 'var(--cds-link-primary, #0f62fe)',
+  available: 'var(--glassine-available, #24a148)',
+  maybe: 'var(--glassine-maybe, #f1c21b)',
+  unavailable: 'var(--glassine-unavailable, #da1e28)',
 };
 
 function formatTime(hour: number, minute: number): string {
@@ -245,11 +245,11 @@ export default function TimeGrid({
     }
   };
 
-  const brushOptions: { value: Availability | 'clear'; label: string; color: string; symbol: string }[] = [
-    { value: 'available', label: '参加可能', color: '#28a745', symbol: '○' },
-    { value: 'maybe', label: '参加可能かも', color: '#ffc107', symbol: '△' },
-    { value: 'unavailable', label: '参加不可', color: '#dc3545', symbol: '×' },
-    { value: 'clear', label: 'クリア', color: '#fff', symbol: '消' },
+  const brushOptions: { value: Availability | 'clear'; label: string; symbol: string; symbolColor: string }[] = [
+    { value: 'available', label: '参加可能', symbol: '○', symbolColor: 'var(--glassine-available)' },
+    { value: 'maybe', label: '参加可能かも', symbol: '△', symbolColor: 'var(--glassine-maybe)' },
+    { value: 'unavailable', label: '参加不可', symbol: '×', symbolColor: 'var(--glassine-unavailable)' },
+    { value: 'clear', label: 'クリア', symbol: '−', symbolColor: 'var(--cds-text-secondary)' },
   ];
 
   // Generate day headers with dates if startDate is provided
@@ -311,10 +311,9 @@ export default function TimeGrid({
                 kind={selectedBrush === option.value ? 'primary' : 'tertiary'}
                 size="sm"
                 onClick={() => setSelectedBrush(option.value)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: option.value === 'clear' ? palette.layer : option.color, borderRadius: 0 }}
               >
-                <span style={{ fontSize: '1.1rem', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.08))' }}>{option.symbol}</span>
-                <span>{option.label}</span>
+                <span style={{ fontSize: '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: '0.25rem' }}>{option.symbol}</span>
+                {option.label}
               </Button>
             ))}
           </div>
