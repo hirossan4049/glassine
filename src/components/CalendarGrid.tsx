@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { Button, Layer } from '@carbon/react';
 import type { Availability } from '../types';
 
 interface CalendarGridProps {
@@ -11,6 +12,20 @@ interface CalendarGridProps {
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+const palette = {
+  layer: 'var(--cds-layer-01)',
+  layerAlt: 'var(--cds-layer-02)',
+  border: 'var(--cds-border-subtle)',
+  borderStrong: 'var(--cds-border-strong)',
+  text: 'var(--cds-text-primary)',
+  textSubtle: 'var(--cds-text-secondary)',
+  accent: 'var(--cds-interactive)',
+  accentPressed: 'var(--cds-interactive-pressed)',
+  available: 'var(--cds-available)',
+  maybe: 'var(--cds-maybe)',
+  unavailable: 'var(--cds-unavailable)',
+};
 
 function dateKey(date: Date): string {
   const year = date.getFullYear();
@@ -166,28 +181,28 @@ export default function CalendarGrid({
   }, [handleMouseUp]);
 
   const getCellColor = (key: string, date: Date): string => {
-    if (isPastDate(date)) return '#e9e9e9';
-    if (allowedDates && !allowedDates.has(key)) return '#f5f5f5';
+    if (isPastDate(date)) return palette.layerAlt;
+    if (allowedDates && !allowedDates.has(key)) return palette.layer;
 
     if (mode === 'select') {
-      return selectedDates.has(key) ? '#007bff' : '#fff';
+      return selectedDates.has(key) ? palette.accent : palette.layer;
     } else {
       const avail = availability.get(key);
-      if (avail === 'available') return '#28a745';
-      if (avail === 'maybe') return '#ffc107';
-      if (avail === 'unavailable') return '#dc3545';
-      return '#fff';
+      if (avail === 'available') return palette.available;
+      if (avail === 'maybe') return palette.maybe;
+      if (avail === 'unavailable') return palette.unavailable;
+      return palette.layer;
     }
   };
 
   const getTextColor = (key: string, date: Date): string => {
-    if (isPastDate(date)) return '#999';
+    if (isPastDate(date)) return palette.textSubtle;
     if (mode === 'select' && selectedDates.has(key)) return '#fff';
     if (mode === 'availability') {
       const avail = availability.get(key);
       if (avail === 'available' || avail === 'unavailable') return '#fff';
     }
-    return '#333';
+    return palette.text;
   };
 
   const navigateMonth = (delta: number) => {
@@ -205,29 +220,52 @@ export default function CalendarGrid({
     });
 
     return (
-      <div style={{ flex: 1, minWidth: '280px' }}>
-        <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '1.1rem' }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: '280px',
+          background: palette.layerAlt,
+          borderRadius: 0,
+          padding: '0.75rem',
+          border: `1px solid ${palette.border}`,
+          boxShadow: 'none',
+        }}
+      >
+        <div
+          style={{
+            textAlign: 'center',
+            fontWeight: 700,
+            marginBottom: '0.5rem',
+            fontSize: '1.05rem',
+            color: palette.text,
+            letterSpacing: '0.01em',
+          }}
+        >
           {monthName}
         </div>
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '2px',
-            background: '#ddd',
-            border: '1px solid #ddd',
+            gap: '1px',
+            background: palette.border,
+            border: `1px solid ${palette.border}`,
+            borderRadius: '8px',
+            overflow: 'hidden',
           }}
         >
           {WEEKDAYS.map((day, i) => (
             <div
               key={day}
               style={{
-                background: '#f0f0f0',
-                padding: '8px 4px',
+                background: palette.layer,
+                padding: '10px 4px',
                 textAlign: 'center',
-                fontWeight: 'bold',
+                fontWeight: 700,
                 fontSize: '0.85rem',
-                color: i === 0 ? '#dc3545' : i === 6 ? '#007bff' : '#333',
+                color: i === 0 ? palette.unavailable : i === 6 ? palette.accent : palette.text,
+                borderBottom: `1px solid ${palette.border}`,
+                borderRadius: 0,
               }}
             >
               {day}
@@ -235,7 +273,7 @@ export default function CalendarGrid({
           ))}
           {days.map((date, i) => {
             if (!date) {
-              return <div key={`empty-${i}`} style={{ background: '#f9f9f9', height: '44px' }} />;
+              return <div key={`empty-${i}`} style={{ background: palette.layerAlt, height: '44px' }} />;
             }
 
             const key = dateKey(date);
@@ -260,19 +298,36 @@ export default function CalendarGrid({
                 }}
                 style={{
                   background: getCellColor(key, date),
-                  height: '44px',
+                  height: '48px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: isPastDate(date) || (allowedDates && !allowedDates.has(key)) ? 'not-allowed' : 'pointer',
                   color: getTextColor(key, date),
-                  fontWeight: isToday ? 'bold' : 'normal',
-                  border: isToday ? '2px solid #333' : 'none',
+                  fontWeight: isToday ? 800 : 600,
+                  border: isToday ? `2px solid ${palette.accent}` : `1px solid ${palette.border}`,
                   boxSizing: 'border-box',
                   fontSize: '0.95rem',
+                  transition: 'transform 80ms ease, box-shadow 120ms ease, background 120ms ease',
+                  boxShadow: isToday ? '0 0 0 2px rgba(15,98,254,0.12)' : 'none',
+                  position: 'relative',
+                  overflow: 'hidden',
                 }}
               >
-                <span style={{ color: dayOfWeek === 0 ? (selectedDates.has(key) || availability.get(key) ? '#fff' : '#dc3545') : dayOfWeek === 6 ? (selectedDates.has(key) || availability.get(key) ? '#fff' : '#007bff') : undefined }}>
+                <span
+                  style={{
+                    color:
+                      dayOfWeek === 0
+                        ? selectedDates.has(key) || availability.get(key)
+                          ? '#fff'
+                          : palette.unavailable
+                        : dayOfWeek === 6
+                        ? selectedDates.has(key) || availability.get(key)
+                          ? '#fff'
+                          : palette.accent
+                        : undefined,
+                  }}
+                >
                   {date.getDate()}
                 </span>
               </div>
@@ -332,107 +387,119 @@ export default function CalendarGrid({
   ];
 
   return (
-    <div style={{ userSelect: 'none' }} ref={gridRef}>
-      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: '0.9rem', color: '#555' }}>💡 ドラッグ塗り / Shift+クリックで範囲 / 曜日ヘッダーで列まとめて塗り</div>
-        {mode === 'select' && (
-          <div style={{ fontSize: '0.85rem', color: '#555' }}>クリックでトグル / ドラッグで範囲</div>
-        )}
+    <Layer level={1}>
+      <div
+        ref={gridRef}
+        style={{
+          userSelect: 'none',
+          background: palette.layer,
+          borderRadius: 0,
+          padding: '1rem',
+          border: `1px solid ${palette.border}`,
+          boxShadow: 'none',
+        }}
+      >
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.75rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          padding: '0.75rem',
+          borderRadius: 0,
+          background: palette.layerAlt,
+          border: `1px dashed ${palette.border}`,
+        }}
+      >
+        <div style={{ fontSize: '0.95rem', color: palette.text }}>
+          💡 Excelドラッグ + ペイント塗りのハイブリッド
+        </div>
+        <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>
+          Shiftで範囲 / 曜日ヘッダーで列まとめて
+        </div>
         {lastClickedKey && (
-          <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: '#444', background: '#f8f9fa', padding: '0.35rem 0.6rem', borderRadius: '6px', border: '1px solid #e9ecef' }}>
-            選択中: {mode === 'select' ? selectedDates.size : availability.size} / 起点 {lastClickedKey}
+          <div
+            style={{
+              marginLeft: 'auto',
+              fontSize: '0.85rem',
+              color: palette.text,
+              background: palette.layer,
+              padding: '0.35rem 0.6rem',
+              borderRadius: 0,
+              border: `1px solid ${palette.border}`,
+              boxShadow: 'none',
+            }}
+          >
+            {mode === 'select' ? '選択日数' : '設定日数'}: {mode === 'select' ? selectedDates.size : availability.size} / 起点 {lastClickedKey}
           </div>
         )}
       </div>
+
       {mode === 'availability' && (
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>ブラシを選択:</div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ margin: '1rem 0 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, color: palette.text }}>ブラシ:</span>
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
             {brushOptions.map((option) => (
-              <button
+              <Button
                 key={option.value}
-                type="button"
+                kind={selectedBrush === option.value ? 'primary' : 'tertiary'}
+                size="sm"
                 onClick={() => setSelectedBrush(option.value)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: option.color,
-                  color: option.value === 'clear' || option.value === 'maybe' ? '#333' : '#fff',
-                  border: selectedBrush === option.value ? '3px solid #333' : '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: selectedBrush === option.value ? 'bold' : 'normal',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: option.value === 'clear' ? palette.layer : option.color, borderRadius: 0 }}
               >
-                <span style={{ fontSize: '1.2rem' }}>{option.symbol}</span>
+                <span style={{ fontSize: '1.1rem', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.08))' }}>{option.symbol}</span>
                 <span>{option.label}</span>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <button
-          onClick={() => navigateMonth(-1)}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '1rem 0' }}>
+        <Button kind="tertiary" size="md" onClick={() => navigateMonth(-1)}>
+          ← 前月
+        </Button>
+        <div
           style={{
-            padding: '0.5rem 1rem',
-            border: '1px solid #ddd',
-            background: '#fff',
-            borderRadius: '4px',
-            cursor: 'pointer',
+            padding: '0.35rem 0.75rem',
+            background: palette.layerAlt,
+            borderRadius: 0,
+            border: `1px solid ${palette.border}`,
+            color: palette.textSubtle,
+            fontSize: '0.9rem',
           }}
         >
-          &lt; 前月
-        </button>
-        <button
-          onClick={() => navigateMonth(1)}
-          style={{
-            padding: '0.5rem 1rem',
-            border: '1px solid #ddd',
-            background: '#fff',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          翌月 &gt;
-        </button>
+          ペイントツール感覚で日付を塗ってください
+        </div>
+        <Button kind="tertiary" size="md" onClick={() => navigateMonth(1)}>
+          翌月 →
+        </Button>
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.85rem', color: '#555' }}>曜日列をまとめて塗る:</span>
+        <span style={{ fontSize: '0.85rem', color: palette.textSubtle }}>曜日列まとめ塗り:</span>
         {WEEKDAYS.map((day, idx) => {
           const keys = collectWeekdayKeys(idx);
           const disabled = keys.length === 0;
           return (
-            <button
+            <Button
               key={day}
-              type="button"
+              kind="ghost"
+              size="sm"
               disabled={disabled}
               onClick={() => applyKeys(keys, resolveBulkAction(keys))}
-              style={{
-                padding: '0.35rem 0.7rem',
-                minWidth: '44px',
-                background: '#fff',
-                color: disabled ? '#aaa' : '#0d6efd',
-                border: '1px solid #d0d7de',
-                borderRadius: '4px',
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                boxShadow: disabled ? 'none' : '0 1px 2px rgba(0,0,0,0.05)',
-              }}
             >
               {day}
-            </button>
+            </Button>
           );
         })}
       </div>
 
-      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
         {renderMonth(month1.year, month1.month, month1Days)}
         {renderMonth(month2.year, month2.month, month2Days)}
       </div>
-    </div>
+      </div>
+    </Layer>
   );
 }

@@ -17,6 +17,8 @@
     "wrangler:deploy": "wrangler pages deploy dist"
   },
   "dependencies": {
+    "@carbon/react": "^1.64.0",
+    "@carbon/styles": "^1.99.0",
     "@cf-wasm/resvg": "^0.3.3",
     "hono": "^4.6.11",
     "react": "^18.3.1",
