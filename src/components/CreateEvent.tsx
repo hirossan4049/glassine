@@ -1,4 +1,14 @@
 import { useState, useMemo } from 'react';
+import {
+  Button,
+  TextInput,
+  TextArea,
+  InlineNotification,
+  SelectableTile,
+  Stack,
+  FormLabel,
+} from '@carbon/react';
+import { ArrowLeft } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { TimeSlot, EventMode } from '../types';
@@ -19,12 +29,10 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
-  // Sort selected dates for TimeGrid
   const sortedDates = useMemo(() => {
     return Array.from(selectedDates).sort();
   }, [selectedDates]);
 
-  // Generate day labels for TimeGrid based on selected dates
   const dayLabels = useMemo(() => {
     return sortedDates.map((dateStr) => {
       const [year, month, day] = dateStr.split('-').map(Number);
@@ -72,7 +80,6 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
           return { start, end };
         });
       } else {
-        // For datetime mode, combine selected dates with selected time slots
         slots = [];
         selectedSlots.forEach((key) => {
           const [dayIndexStr, hourStr, minuteStr] = key.split('-');
@@ -80,7 +87,6 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
           const hour = parseInt(hourStr);
           const minute = parseInt(minuteStr);
 
-          // Get the actual date from sortedDates
           const dateStr = sortedDates[dayIndex];
           if (!dateStr) return;
 
@@ -104,7 +110,6 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       const data = await response.json() as any;
 
       if (response.ok) {
-        // 履歴に保存
         addCreatedEvent({
           eventId: data.eventId,
           title: title.trim(),
@@ -123,184 +128,121 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
   };
 
   return (
-    <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <button
-        onClick={onBack}
-        style={{
-          padding: '0.5rem 1rem',
-          marginBottom: '1rem',
-          background: '#6c757d',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-        }}
-      >
-        ← 戻る
-      </button>
+    <div className="glassine-page">
+      <Stack gap={6}>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={ArrowLeft}
+          onClick={onBack}
+        >
+          戻る
+        </Button>
 
-      <h1 style={{ marginBottom: '1.5rem' }}>新しいイベントを作成</h1>
+        <h1 className="cds--type-productive-heading-04">新しいイベントを作成</h1>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          イベント名 *
-        </label>
-        <input
-          type="text"
+        <TextInput
+          id="event-title"
+          labelText="イベント名"
+          placeholder="例: 新年会の日程調整"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="例: 新年会の日程調整"
-          style={{
-            width: '100%',
-            padding: '0.75rem',
-            fontSize: '1rem',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-          }}
+          required
         />
-      </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          説明（任意）
-        </label>
-        <textarea
+        <TextArea
+          id="event-description"
+          labelText="説明（任意）"
+          placeholder="例: 場所や詳細情報など"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="例: 場所や詳細情報など"
           rows={3}
-          style={{
-            width: '100%',
-            padding: '0.75rem',
-            fontSize: '1rem',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            resize: 'vertical',
-          }}
         />
-      </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          日程タイプ *
-        </label>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('dateonly');
-              setSelectedSlots(new Set());
-            }}
-            style={{
-              padding: '1rem 1.5rem',
-              background: mode === 'dateonly' ? '#007bff' : '#f0f0f0',
-              color: mode === 'dateonly' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-          >
-            <div style={{ fontWeight: 'bold' }}>日程のみ</div>
-            <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.8 }}>
-              日付だけを選択
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('datetime');
-            }}
-            style={{
-              padding: '1rem 1.5rem',
-              background: mode === 'datetime' ? '#007bff' : '#f0f0f0',
-              color: mode === 'datetime' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-          >
-            <div style={{ fontWeight: 'bold' }}>時間込み</div>
-            <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.8 }}>
-              日付と時間を選択
-            </div>
-          </button>
+        <div>
+          <FormLabel>日程タイプ</FormLabel>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+            <SelectableTile
+              id="mode-dateonly"
+              selected={mode === 'dateonly'}
+              onClick={() => {
+                setMode('dateonly');
+                setSelectedSlots(new Set());
+              }}
+              style={{ flex: '1', minWidth: '150px' }}
+            >
+              <p className="cds--type-body-compact-01" style={{ fontWeight: 600 }}>日程のみ</p>
+              <p className="cds--type-helper-text-01">日付だけを選択</p>
+            </SelectableTile>
+            <SelectableTile
+              id="mode-datetime"
+              selected={mode === 'datetime'}
+              onClick={() => setMode('datetime')}
+              style={{ flex: '1', minWidth: '150px' }}
+            >
+              <p className="cds--type-body-compact-01" style={{ fontWeight: 600 }}>時間込み</p>
+              <p className="cds--type-helper-text-01">日付と時間を選択</p>
+            </SelectableTile>
+          </div>
         </div>
-      </div>
 
-      {/* Step 1: Select dates on calendar (both modes) */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          {mode === 'dateonly' ? '候補日程を選択 *' : 'Step 1: 候補日を選択 *'}
-        </label>
-        <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-          カレンダー上をドラッグして候補日を選択してください
-        </p>
-        <CalendarGrid
-          selectedDates={selectedDates}
-          onDatesChange={(dates) => {
-            setSelectedDates(dates);
-            // Clear time slots if dates changed in datetime mode
-            if (mode === 'datetime') {
-              setSelectedSlots(new Set());
-            }
-          }}
-        />
-        <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
-          選択中: {selectedDates.size} 日
-        </p>
-      </div>
-
-      {/* Step 2: Select time slots (datetime mode only) */}
-      {mode === 'datetime' && selectedDates.size > 0 && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-            Step 2: 候補時間を選択 *
-          </label>
-          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-            グリッド上をドラッグして候補時間を選択してください
+        <div>
+          <FormLabel>
+            {mode === 'dateonly' ? '候補日程を選択' : 'Step 1: 候補日を選択'}
+          </FormLabel>
+          <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
+            カレンダー上をドラッグして候補日を選択してください
           </p>
-          <TimeGrid
-            slots={[]}
-            selectedSlots={selectedSlots}
-            onSlotsChange={setSelectedSlots}
-            days={dayLabels}
+          <CalendarGrid
+            selectedDates={selectedDates}
+            onDatesChange={(dates) => {
+              setSelectedDates(dates);
+              if (mode === 'datetime') {
+                setSelectedSlots(new Set());
+              }
+            }}
           />
-          <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
-            選択中: {selectedSlots.size} スロット
+          <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
+            選択中: {selectedDates.size} 日
           </p>
         </div>
-      )}
 
-      {error && (
-        <div
-          style={{
-            padding: '1rem',
-            marginBottom: '1rem',
-            background: '#f8d7da',
-            color: '#721c24',
-            borderRadius: '4px',
-          }}
+        {mode === 'datetime' && selectedDates.size > 0 && (
+          <div>
+            <FormLabel>Step 2: 候補時間を選択</FormLabel>
+            <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
+              グリッド上をドラッグして候補時間を選択してください
+            </p>
+            <TimeGrid
+              slots={[]}
+              selectedSlots={selectedSlots}
+              onSlotsChange={setSelectedSlots}
+              days={dayLabels}
+            />
+            <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
+              選択中: {selectedSlots.size} スロット
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <InlineNotification
+            kind="error"
+            title="エラー"
+            subtitle={error}
+            hideCloseButton
+          />
+        )}
+
+        <Button
+          kind="primary"
+          size="lg"
+          onClick={handleCreate}
+          disabled={creating}
         >
-          {error}
-        </div>
-      )}
-
-      <button
-        onClick={handleCreate}
-        disabled={creating}
-        style={{
-          padding: '1rem 2rem',
-          fontSize: '1.1rem',
-          background: creating ? '#ccc' : '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: creating ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {creating ? '作成中...' : 'イベントを作成'}
-      </button>
+          {creating ? '作成中...' : 'イベントを作成'}
+        </Button>
+      </Stack>
     </div>
   );
 }

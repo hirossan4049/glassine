@@ -1,4 +1,22 @@
 import { useState, useEffect } from 'react';
+import {
+  Button,
+  TextInput,
+  Tag,
+  InlineNotification,
+  InlineLoading,
+  Stack,
+  FormLabel,
+  CopyButton,
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableHeader,
+  TableBody,
+  TableCell,
+} from '@carbon/react';
+import { ArrowLeft, Checkmark } from '@carbon/react/icons';
 import type { Event, SlotAggregation, EventSlot, EventMode, ParticipantResponse } from '../types';
 import ResponseMatrix from './ResponseMatrix';
 import ResponseEditor from './ResponseEditor';
@@ -88,11 +106,6 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert('URLをコピーしました');
-  };
-
   const handleDeleteResponse = async (responseId: number) => {
     try {
       const response = await fetch(`/api/events/${eventId}/responses/${responseId}`, {
@@ -122,16 +135,27 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem' }}>読み込み中...</div>;
+    return (
+      <div className="glassine-page">
+        <InlineLoading description="読み込み中..." />
+      </div>
+    );
   }
 
   if (error || !event) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <p style={{ color: 'red' }}>{error || 'イベントが見つかりません'}</p>
-        <button onClick={onBack} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
-          戻る
-        </button>
+      <div className="glassine-page">
+        <Stack gap={4}>
+          <InlineNotification
+            kind="error"
+            title="エラー"
+            subtitle={error || 'イベントが見つかりません'}
+            hideCloseButton
+          />
+          <Button kind="secondary" onClick={onBack}>
+            戻る
+          </Button>
+        </Stack>
       </div>
     );
   }
@@ -139,7 +163,6 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
   const viewUrl = `${window.location.origin}/v/${eventId}?token=${event.viewToken}`;
   const respondUrl = `${window.location.origin}/r/${eventId}?token=${event.viewToken}`;
 
-  // Show response editor if editing
   if (editingResponse) {
     return (
       <ResponseEditor
@@ -151,191 +174,172 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
     );
   }
 
+  const headers = [
+    { key: 'datetime', header: '日時' },
+    { key: 'available', header: '○' },
+    { key: 'maybe', header: '△' },
+    { key: 'unavailable', header: '×' },
+    { key: 'score', header: 'スコア' },
+    { key: 'action', header: '操作' },
+  ];
+
+  const rows = aggregation.slice(0, 10).map((agg) => {
+    const confirmedIndices = event.confirmedSlots
+      ? JSON.parse(event.confirmedSlots)
+      : [];
+    const isConfirmed = confirmedIndices.includes(agg.index);
+
+    return {
+      id: String(agg.index),
+      datetime: formatSlotDisplay(agg.slot, event.mode),
+      available: agg.availableCount,
+      maybe: agg.maybeCount,
+      unavailable: agg.unavailableCount,
+      score: agg.score,
+      isConfirmed,
+      index: agg.index,
+    };
+  });
+
   return (
-    <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <button
-        onClick={onBack}
-        style={{
-          padding: '0.5rem 1rem',
-          marginBottom: '1rem',
-          background: '#6c757d',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-        }}
-      >
-        ← 戻る
-      </button>
+    <div className="glassine-page">
+      <Stack gap={6}>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={ArrowLeft}
+          onClick={onBack}
+        >
+          戻る
+        </Button>
 
-      <h1 style={{ marginBottom: '0.5rem' }}>{event.title}</h1>
-      {event.description && <p style={{ color: '#666', marginBottom: '1rem' }}>{event.description}</p>}
-
-      <div
-        style={{
-          display: 'inline-block',
-          padding: '0.25rem 0.75rem',
-          background: event.mode === 'dateonly' ? '#6c757d' : '#17a2b8',
-          color: 'white',
-          borderRadius: '4px',
-          fontSize: '0.9rem',
-          marginBottom: '1.5rem',
-        }}
-      >
-        {event.mode === 'dateonly' ? '日程のみ' : '時間込み'}
-      </div>
-
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>共有URL</h2>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            参加者用URL（回答）
-          </label>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              value={respondUrl}
-              readOnly
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-              }}
-            />
-            <button
-              onClick={() => copyToClipboard(respondUrl)}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-              }}
-            >
-              コピー
-            </button>
-          </div>
-        </div>
         <div>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            閲覧用URL
-          </label>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              type="text"
-              value={viewUrl}
-              readOnly
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-              }}
-            />
-            <button
-              onClick={() => copyToClipboard(viewUrl)}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-              }}
-            >
-              コピー
-            </button>
-          </div>
+          <h1 className="cds--type-productive-heading-04">{event.title}</h1>
+          {event.description && (
+            <p className="cds--type-body-01" style={{ color: 'var(--cds-text-secondary)', marginTop: '0.5rem' }}>
+              {event.description}
+            </p>
+          )}
+          <Tag
+            type={event.mode === 'dateonly' ? 'gray' : 'teal'}
+            size="sm"
+            style={{ marginTop: '0.5rem' }}
+          >
+            {event.mode === 'dateonly' ? '日程のみ' : '時間込み'}
+          </Tag>
         </div>
-      </div>
 
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>回答状況</h2>
-        <p style={{ marginBottom: '1rem' }}>回答者数: {event.responses?.length || 0}</p>
-        <ResponseMatrix
-          event={event}
-          onEditResponse={handleEditResponse}
-          onDeleteResponse={handleDeleteResponse}
-        />
-      </div>
-
-      {aggregation.length > 0 && (
-        <div style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>
-            おすすめ候補{event.mode === 'dateonly' ? '日程' : '日時'}
-          </h2>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f0f0f0' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', border: '1px solid #ddd' }}>
-                    日時
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                    ○
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                    △
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                    ×
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                    スコア
-                  </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {aggregation.slice(0, 10).map((agg) => {
-                  const confirmedIndices = event.confirmedSlots
-                    ? JSON.parse(event.confirmedSlots)
-                    : [];
-                  const isConfirmed = confirmedIndices.includes(agg.index);
-
-                  return (
-                    <tr key={agg.index}>
-                      <td style={{ padding: '0.75rem', border: '1px solid #ddd' }}>
-                        {formatSlotDisplay(agg.slot, event.mode)}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                        {agg.availableCount}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                        {agg.maybeCount}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                        {agg.unavailableCount}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                        {agg.score}
-                      </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #ddd' }}>
-                        <button
-                          onClick={() => handleConfirm([agg.index])}
-                          disabled={confirming || isConfirmed}
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            background: isConfirmed ? '#28a745' : '#007bff',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '0.85rem',
-                            cursor: isConfirmed ? 'default' : 'pointer',
-                          }}
-                        >
-                          {isConfirmed ? '確定済み' : '確定'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+        <div>
+          <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '1rem' }}>共有URL</h2>
+          <Stack gap={4}>
+            <div>
+              <FormLabel>参加者用URL（回答）</FormLabel>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <TextInput
+                  id="respond-url"
+                  labelText=""
+                  hideLabel
+                  value={respondUrl}
+                  readOnly
+                  style={{ flex: 1 }}
+                />
+                <CopyButton
+                  onClick={() => navigator.clipboard.writeText(respondUrl)}
+                  feedback="コピーしました"
+                />
+              </div>
+            </div>
+            <div>
+              <FormLabel>閲覧用URL</FormLabel>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <TextInput
+                  id="view-url"
+                  labelText=""
+                  hideLabel
+                  value={viewUrl}
+                  readOnly
+                  style={{ flex: 1 }}
+                />
+                <CopyButton
+                  onClick={() => navigator.clipboard.writeText(viewUrl)}
+                  feedback="コピーしました"
+                />
+              </div>
+            </div>
+          </Stack>
         </div>
-      )}
+
+        <div>
+          <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '0.5rem' }}>回答状況</h2>
+          <p className="cds--type-body-01" style={{ marginBottom: '1rem' }}>
+            回答者数: {event.responses?.length || 0}
+          </p>
+          <ResponseMatrix
+            event={event}
+            onEditResponse={handleEditResponse}
+            onDeleteResponse={handleDeleteResponse}
+          />
+        </div>
+
+        {aggregation.length > 0 && (
+          <div>
+            <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '1rem' }}>
+              おすすめ候補{event.mode === 'dateonly' ? '日程' : '日時'}
+            </h2>
+            <DataTable rows={rows} headers={headers}>
+              {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
+                <Table {...getTableProps()}>
+                  <TableHead>
+                    <TableRow>
+                      {tableHeaders.map((header) => (
+                        <TableHeader {...getHeaderProps({ header })} key={header.key}>
+                          {header.header}
+                        </TableHeader>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tableRows.map((row) => {
+                      const rowData = rows.find(r => r.id === row.id);
+                      return (
+                        <TableRow {...getRowProps({ row })} key={row.id}>
+                          {row.cells.map((cell) => {
+                            if (cell.info.header === 'action' && rowData) {
+                              return (
+                                <TableCell key={cell.id}>
+                                  <Button
+                                    kind={rowData.isConfirmed ? 'ghost' : 'primary'}
+                                    size="sm"
+                                    renderIcon={rowData.isConfirmed ? Checkmark : undefined}
+                                    onClick={() => handleConfirm([rowData.index])}
+                                    disabled={confirming || rowData.isConfirmed}
+                                  >
+                                    {rowData.isConfirmed ? '確定済み' : '確定'}
+                                  </Button>
+                                </TableCell>
+                              );
+                            }
+                            return <TableCell key={cell.id}>{cell.value}</TableCell>;
+                          })}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </DataTable>
+          </div>
+        )}
+
+        {error && (
+          <InlineNotification
+            kind="error"
+            title="エラー"
+            subtitle={error}
+            onCloseButtonClick={() => setError('')}
+          />
+        )}
+      </Stack>
     </div>
   );
 }

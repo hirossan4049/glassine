@@ -7,4 +7,11 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+      },
+    },
+  },
 })

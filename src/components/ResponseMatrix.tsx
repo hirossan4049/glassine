@@ -1,3 +1,5 @@
+import { Button, Tile } from '@carbon/react';
+import { Edit, TrashCan } from '@carbon/react/icons';
 import type { Event, EventSlot, ParticipantResponse, Availability, EventMode } from '../types';
 
 interface ResponseMatrixProps {
@@ -29,10 +31,10 @@ function getAvailabilitySymbol(availability: Availability | undefined): string {
 }
 
 function getAvailabilityColor(availability: Availability | undefined): string {
-  if (availability === 'available') return '#28a745';
-  if (availability === 'maybe') return '#ffc107';
-  if (availability === 'unavailable') return '#dc3545';
-  return '#999';
+  if (availability === 'available') return 'var(--glassine-available)';
+  if (availability === 'maybe') return 'var(--glassine-maybe)';
+  if (availability === 'unavailable') return 'var(--glassine-unavailable)';
+  return 'var(--cds-text-helper)';
 }
 
 function findResponseAvailability(
@@ -51,13 +53,12 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
 
   if (responses.length === 0) {
     return (
-      <div style={{ padding: '1rem', background: '#f9f9f9', borderRadius: '8px', textAlign: 'center' }}>
+      <Tile style={{ textAlign: 'center' }}>
         まだ回答がありません
-      </div>
+      </Tile>
     );
   }
 
-  // Group slots by date for datetime mode
   const slotsByDate = new Map<string, EventSlot[]>();
   for (const slot of slots) {
     const d = new Date(slot.start);
@@ -70,7 +71,6 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
 
   const isDateOnly = event.mode === 'dateonly';
 
-  // Calculate totals for each slot
   const slotTotals = slots.map((slot) => {
     let available = 0;
     let maybe = 0;
@@ -88,14 +88,13 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
     <div style={{ overflowX: 'auto' }}>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 'max-content' }}>
         <thead>
-          {/* Date row (for datetime mode with multiple times per date) */}
           {!isDateOnly && (
             <tr>
               <th
                 style={{
                   padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  background: '#f0f0f0',
+                  border: '1px solid var(--cds-border-subtle)',
+                  background: 'var(--cds-layer-02)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
@@ -112,8 +111,8 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                     colSpan={dateSlots.length}
                     style={{
                       padding: '0.5rem',
-                      border: '1px solid #ddd',
-                      background: '#e8e8e8',
+                      border: '1px solid var(--cds-border-subtle)',
+                      background: 'var(--cds-layer-03)',
                       textAlign: 'center',
                       fontWeight: 'bold',
                     }}
@@ -124,14 +123,13 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
               })}
             </tr>
           )}
-          {/* Time row (or single header for dateonly) */}
           <tr>
             {isDateOnly && (
               <th
                 style={{
                   padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  background: '#f0f0f0',
+                  border: '1px solid var(--cds-border-subtle)',
+                  background: 'var(--cds-layer-02)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
@@ -145,8 +143,8 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
               <th
                 style={{
                   padding: '0.5rem',
-                  border: '1px solid #ddd',
-                  background: '#f0f0f0',
+                  border: '1px solid var(--cds-border-subtle)',
+                  background: 'var(--cds-layer-02)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
@@ -160,8 +158,8 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                   key={i}
                   style={{
                     padding: '0.5rem',
-                    border: '1px solid #ddd',
-                    background: '#f0f0f0',
+                    border: '1px solid var(--cds-border-subtle)',
+                    background: 'var(--cds-layer-02)',
                     textAlign: 'center',
                     fontSize: '0.85rem',
                     minWidth: isDateOnly ? '80px' : '50px',
@@ -174,16 +172,15 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
           </tr>
         </thead>
         <tbody>
-          {/* Totals row */}
-          <tr style={{ background: '#f9f9f9' }}>
+          <tr style={{ background: 'var(--cds-layer-01)' }}>
             <td
               style={{
                 padding: '0.5rem',
-                border: '1px solid #ddd',
+                border: '1px solid var(--cds-border-subtle)',
                 fontWeight: 'bold',
                 position: 'sticky',
                 left: 0,
-                background: '#f9f9f9',
+                background: 'var(--cds-layer-01)',
                 zIndex: 1,
               }}
             >
@@ -194,28 +191,27 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                 key={i}
                 style={{
                   padding: '0.25rem',
-                  border: '1px solid #ddd',
+                  border: '1px solid var(--cds-border-subtle)',
                   textAlign: 'center',
                   fontSize: '0.75rem',
                   lineHeight: 1.2,
                 }}
               >
-                <div style={{ color: '#28a745' }}>○{total.available}</div>
-                <div style={{ color: '#ffc107' }}>△{total.maybe}</div>
-                <div style={{ color: '#dc3545' }}>×{total.unavailable}</div>
+                <div style={{ color: 'var(--glassine-available)' }}>○{total.available}</div>
+                <div style={{ color: 'var(--glassine-maybe)' }}>△{total.maybe}</div>
+                <div style={{ color: 'var(--glassine-unavailable)' }}>×{total.unavailable}</div>
               </td>
             ))}
           </tr>
-          {/* Participant rows */}
           {responses.map((response) => (
             <tr key={response.id}>
               <td
                 style={{
                   padding: '0.5rem',
-                  border: '1px solid #ddd',
+                  border: '1px solid var(--cds-border-subtle)',
                   position: 'sticky',
                   left: 0,
-                  background: 'white',
+                  background: 'var(--cds-layer)',
                   zIndex: 1,
                   whiteSpace: 'nowrap',
                 }}
@@ -223,40 +219,28 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ fontWeight: 'bold' }}>{response.participantName}</span>
                   {onEditResponse && (
-                    <button
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      hasIconOnly
+                      renderIcon={Edit}
+                      iconDescription="編集"
                       onClick={() => onEditResponse(response)}
-                      style={{
-                        padding: '0.15rem 0.4rem',
-                        fontSize: '0.75rem',
-                        background: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '3px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      編集
-                    </button>
+                    />
                   )}
                   {onDeleteResponse && response.id && (
-                    <button
+                    <Button
+                      kind="danger--ghost"
+                      size="sm"
+                      hasIconOnly
+                      renderIcon={TrashCan}
+                      iconDescription="削除"
                       onClick={() => {
                         if (confirm(`${response.participantName}さんの回答を削除しますか？`)) {
                           onDeleteResponse(response.id!);
                         }
                       }}
-                      style={{
-                        padding: '0.15rem 0.4rem',
-                        fontSize: '0.75rem',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '3px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      削除
-                    </button>
+                    />
                   )}
                 </div>
               </td>
@@ -267,7 +251,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                     key={i}
                     style={{
                       padding: '0.5rem',
-                      border: '1px solid #ddd',
+                      border: '1px solid var(--cds-border-subtle)',
                       textAlign: 'center',
                       fontSize: '1.2rem',
                       color: getAvailabilityColor(availability),

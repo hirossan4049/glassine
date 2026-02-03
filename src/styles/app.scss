@@ -1,0 +1,59 @@
+// Glassine Application Styles
+// ===========================
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+// Page container
+.glassine-page {
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+// Home page container (narrower)
+.glassine-home {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+// Section spacing
+.glassine-section {
+  margin-bottom: 1.5rem;
+}
+
+// Grid styles for TimeGrid/CalendarGrid
+.glassine-grid {
+  overflow-x: auto;
+}
+
+// Availability colors
+.glassine-available {
+  color: var(--glassine-available);
+}
+
+.glassine-maybe {
+  color: var(--glassine-maybe);
+}
+
+.glassine-unavailable {
+  color: var(--glassine-unavailable);
+}
+
+// Link styles within tiles
+.glassine-link {
+  color: var(--cds-link-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}

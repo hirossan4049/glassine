@@ -1,0 +1,31 @@
+// Carbon Design System - Sass Configuration
+// =========================================
+
+// Theme configuration
+@use '@carbon/react/scss/themes';
+@use '@carbon/react/scss/theme' with (
+  $theme: themes.$g10
+);
+
+// Reset and base styles
+@use '@carbon/react/scss/reset';
+
+// Grid system
+@use '@carbon/react/scss/grid';
+
+// All component styles
+@use '@carbon/react/scss/components';
+
+// Type styles
+@use '@carbon/react/scss/type';
+
+// =========================================
+// Custom Application Tokens
+// =========================================
+
+:root {
+  // Glassine 固有のカスタムトークン
+  --glassine-available: #24a148;
+  --glassine-maybe: #f1c21b;
+  --glassine-unavailable: #da1e28;
+}

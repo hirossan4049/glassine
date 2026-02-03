@@ -1,4 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
+import {
+  Button,
+  TextInput,
+  Tag,
+  InlineNotification,
+  InlineLoading,
+  Stack,
+  FormLabel,
+} from '@carbon/react';
+import { ArrowLeft, Checkmark } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { Event, Availability } from '../types';
@@ -50,7 +60,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
     }
   };
 
-  // Extract unique dates from event slots for datetime mode
   const { sortedDates, dayLabels } = useMemo(() => {
     if (!event || event.mode === 'dateonly') {
       return { sortedDates: [], dayLabels: [] };
@@ -96,7 +105,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       let slots;
 
       if (isDateOnly) {
-        // Convert date availability to slots array
         slots = Array.from(dateAvailability.entries()).map(([dateStr, avail]) => {
           const [year, month, day] = dateStr.split('-').map(Number);
           const date = new Date(year, month - 1, day);
@@ -106,7 +114,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           return { start, end, availability: avail };
         });
       } else {
-        // For datetime mode, convert grid key (dayIndex-hour-minute) to actual slot timestamps
         slots = [];
         for (const [key, avail] of availability.entries()) {
           const [dayIndexStr, hourStr, minuteStr] = key.split('-');
@@ -114,7 +121,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           const hour = parseInt(hourStr);
           const minute = parseInt(minuteStr);
 
-          // Get the actual date from sortedDates
           const dateStr = sortedDates[dayIndex];
           if (!dateStr) continue;
 
@@ -138,7 +144,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       const data = await response.json() as any;
 
       if (response.ok) {
-        // 履歴に保存
         if (event) {
           addRespondedEvent({
             eventId,
@@ -162,50 +167,51 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
   };
 
   if (loading) {
-    return <div style={{ padding: '2rem' }}>読み込み中...</div>;
+    return (
+      <div className="glassine-page">
+        <InlineLoading description="読み込み中..." />
+      </div>
+    );
   }
 
   if (error && !event) {
     return (
-      <div style={{ padding: '2rem' }}>
-        <p style={{ color: 'red' }}>{error}</p>
-        <button onClick={onBack} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
-          戻る
-        </button>
+      <div className="glassine-page">
+        <Stack gap={4}>
+          <InlineNotification
+            kind="error"
+            title="エラー"
+            subtitle={error}
+            hideCloseButton
+          />
+          <Button kind="secondary" onClick={onBack}>
+            戻る
+          </Button>
+        </Stack>
       </div>
     );
   }
 
   if (success) {
     return (
-      <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-        <h1 style={{ color: '#28a745', marginBottom: '1rem' }}>回答を送信しました</h1>
-        <p style={{ marginBottom: '1.5rem' }}>ご協力ありがとうございました。</p>
-        <button
-          onClick={() => setSuccess(false)}
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            marginRight: '1rem',
-          }}
-        >
-          もう一度回答する
-        </button>
-        <button
-          onClick={onBack}
-          style={{
-            padding: '0.75rem 1.5rem',
-            background: '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-          }}
-        >
-          トップに戻る
-        </button>
+      <div className="glassine-home">
+        <Stack gap={5}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Checkmark size={24} style={{ color: 'var(--cds-support-success)' }} />
+            <h1 className="cds--type-productive-heading-04" style={{ color: 'var(--cds-support-success)' }}>
+              回答を送信しました
+            </h1>
+          </div>
+          <p className="cds--type-body-01">ご協力ありがとうございました。</p>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <Button kind="primary" onClick={() => setSuccess(false)}>
+              もう一度回答する
+            </Button>
+            <Button kind="secondary" onClick={onBack}>
+              トップに戻る
+            </Button>
+          </div>
+        </Stack>
       </div>
     );
   }
@@ -214,7 +220,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
   const currentAvailability = isDateOnly ? dateAvailability : availability;
   const inputUnit = isDateOnly ? '日' : 'スロット';
 
-  // Generate allowed dates from event slots for date-only mode
   const allowedDates = isDateOnly
     ? new Set(
         (event?.slots || []).map((slot) => {
@@ -225,121 +230,93 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
     : undefined;
 
   return (
-    <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <button
-        onClick={onBack}
-        style={{
-          padding: '0.5rem 1rem',
-          marginBottom: '1rem',
-          background: '#6c757d',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-        }}
-      >
-        ← 戻る
-      </button>
+    <div className="glassine-page">
+      <Stack gap={6}>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={ArrowLeft}
+          onClick={onBack}
+        >
+          戻る
+        </Button>
 
-      <h1 style={{ marginBottom: '0.5rem' }}>{event?.title}</h1>
-      {event?.description && <p style={{ color: '#666', marginBottom: '1rem' }}>{event.description}</p>}
+        <div>
+          <h1 className="cds--type-productive-heading-04">{event?.title}</h1>
+          {event?.description && (
+            <p className="cds--type-body-01" style={{ color: 'var(--cds-text-secondary)', marginTop: '0.5rem' }}>
+              {event.description}
+            </p>
+          )}
+          <Tag
+            type={isDateOnly ? 'gray' : 'teal'}
+            size="sm"
+            style={{ marginTop: '0.5rem' }}
+          >
+            {isDateOnly ? '日程のみ' : '時間込み'}
+          </Tag>
+        </div>
 
-      <div
-        style={{
-          display: 'inline-block',
-          padding: '0.25rem 0.75rem',
-          background: isDateOnly ? '#6c757d' : '#17a2b8',
-          color: 'white',
-          borderRadius: '4px',
-          fontSize: '0.9rem',
-          marginBottom: '1.5rem',
-        }}
-      >
-        {isDateOnly ? '日程のみ' : '時間込み'}
-      </div>
-
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          お名前 *
-        </label>
-        <input
-          type="text"
+        <TextInput
+          id="participant-name"
+          labelText="お名前"
+          placeholder="例: 山田太郎"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="例: 山田太郎"
-          style={{
-            width: '100%',
-            maxWidth: '400px',
-            padding: '0.75rem',
-            fontSize: '1rem',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-          }}
+          required
+          style={{ maxWidth: '400px' }}
         />
-      </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          可否を入力 *
-        </label>
-        <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-          ブラシを選択してから、{isDateOnly ? 'カレンダー' : 'グリッド'}上をクリック/ドラッグして可否を入力してください
-        </p>
+        <div>
+          <FormLabel>可否を入力</FormLabel>
+          <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
+            ブラシを選択してから、{isDateOnly ? 'カレンダー' : 'グリッド'}上をクリック/ドラッグして可否を入力してください
+          </p>
 
-        {isDateOnly ? (
-          <CalendarGrid
-            selectedDates={new Set()}
-            onDatesChange={() => {}}
-            mode="availability"
-            availability={dateAvailability}
-            onAvailabilityChange={setDateAvailability}
-            allowedDates={allowedDates}
-          />
-        ) : (
-          <TimeGrid
-            slots={event?.slots || []}
-            selectedSlots={new Set()}
-            onSlotsChange={() => {}}
-            mode="availability"
-            availability={availability}
-            onAvailabilityChange={setAvailability}
-            days={dayLabels}
+          {isDateOnly ? (
+            <CalendarGrid
+              selectedDates={new Set()}
+              onDatesChange={() => {}}
+              mode="availability"
+              availability={dateAvailability}
+              onAvailabilityChange={setDateAvailability}
+              allowedDates={allowedDates}
+            />
+          ) : (
+            <TimeGrid
+              slots={event?.slots || []}
+              selectedSlots={new Set()}
+              onSlotsChange={() => {}}
+              mode="availability"
+              availability={availability}
+              onAvailabilityChange={setAvailability}
+              days={dayLabels}
+            />
+          )}
+
+          <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
+            入力済み: {currentAvailability.size} {inputUnit}
+          </p>
+        </div>
+
+        {error && (
+          <InlineNotification
+            kind="error"
+            title="エラー"
+            subtitle={error}
+            hideCloseButton
           />
         )}
 
-        <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
-          入力済み: {currentAvailability.size} {inputUnit}
-        </p>
-      </div>
-
-      {error && (
-        <div
-          style={{
-            padding: '1rem',
-            marginBottom: '1rem',
-            background: '#f8d7da',
-            color: '#721c24',
-            borderRadius: '4px',
-          }}
+        <Button
+          kind="primary"
+          size="lg"
+          onClick={handleSubmit}
+          disabled={submitting}
         >
-          {error}
-        </div>
-      )}
-
-      <button
-        onClick={handleSubmit}
-        disabled={submitting}
-        style={{
-          padding: '1rem 2rem',
-          fontSize: '1.1rem',
-          background: submitting ? '#ccc' : '#28a745',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: submitting ? 'not-allowed' : 'pointer',
-        }}
-      >
-        {submitting ? '送信中...' : '回答を送信'}
-      </button>
+          {submitting ? '送信中...' : '回答を送信'}
+        </Button>
+      </Stack>
     </div>
   );
 }

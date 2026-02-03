@@ -1,4 +1,12 @@
 import { useState, useMemo } from 'react';
+import {
+  Button,
+  TextInput,
+  InlineNotification,
+  Stack,
+  FormLabel,
+} from '@carbon/react';
+import { ArrowLeft } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { Event, ParticipantResponse, Availability } from '../types';
@@ -22,10 +30,8 @@ function dateKey(date: Date): string {
 export default function ResponseEditor({ event, response, onSave, onCancel }: ResponseEditorProps) {
   const [name, setName] = useState(response.participantName);
   const [availability, setAvailability] = useState<Map<string, Availability>>(() => {
-    // Initialize from existing response for datetime mode
     const map = new Map<string, Availability>();
     if (event.mode !== 'dateonly') {
-      // Build sortedDates first
       const datesSet = new Set<string>();
       for (const slot of event.slots) {
         const date = new Date(slot.start);
@@ -33,7 +39,6 @@ export default function ResponseEditor({ event, response, onSave, onCancel }: Re
       }
       const sorted = Array.from(datesSet).sort();
 
-      // Map response slots to grid keys
       for (const slot of response.slots) {
         const date = new Date(slot.start);
         const dateStr = dateKey(date);
@@ -49,7 +54,6 @@ export default function ResponseEditor({ event, response, onSave, onCancel }: Re
     return map;
   });
   const [dateAvailability, setDateAvailability] = useState<Map<string, Availability>>(() => {
-    // Initialize from existing response for dateonly mode
     const map = new Map<string, Availability>();
     if (event.mode === 'dateonly') {
       for (const slot of response.slots) {
@@ -62,7 +66,6 @@ export default function ResponseEditor({ event, response, onSave, onCancel }: Re
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Extract unique dates from event slots for datetime mode
   const { sortedDates, dayLabels } = useMemo(() => {
     if (event.mode === 'dateonly') {
       return { sortedDates: [], dayLabels: [] };
@@ -172,124 +175,91 @@ export default function ResponseEditor({ event, response, onSave, onCancel }: Re
     : undefined;
 
   return (
-    <div style={{ padding: '1rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <button
-        onClick={onCancel}
-        style={{
-          padding: '0.5rem 1rem',
-          marginBottom: '1rem',
-          background: '#6c757d',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-        }}
-      >
-        ← キャンセル
-      </button>
+    <div className="glassine-page">
+      <Stack gap={6}>
+        <Button
+          kind="ghost"
+          size="sm"
+          renderIcon={ArrowLeft}
+          onClick={onCancel}
+        >
+          キャンセル
+        </Button>
 
-      <h1 style={{ marginBottom: '0.5rem' }}>回答を編集: {response.participantName}</h1>
-      <p style={{ color: '#666', marginBottom: '1.5rem' }}>{event.title}</p>
+        <div>
+          <h1 className="cds--type-productive-heading-04">回答を編集: {response.participantName}</h1>
+          <p className="cds--type-body-01" style={{ color: 'var(--cds-text-secondary)', marginTop: '0.5rem' }}>
+            {event.title}
+          </p>
+        </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          お名前 *
-        </label>
-        <input
-          type="text"
+        <TextInput
+          id="participant-name"
+          labelText="お名前"
+          placeholder="例: 山田太郎"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="例: 山田太郎"
-          style={{
-            width: '100%',
-            maxWidth: '400px',
-            padding: '0.75rem',
-            fontSize: '1rem',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-          }}
+          required
         />
-      </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-          可否を入力 *
-        </label>
-        <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
-          ブラシを選択してから、{isDateOnly ? 'カレンダー' : 'グリッド'}上をクリック/ドラッグして可否を入力してください
-        </p>
+        <div>
+          <FormLabel>可否を入力</FormLabel>
+          <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
+            ブラシを選択してから、{isDateOnly ? 'カレンダー' : 'グリッド'}上をクリック/ドラッグして可否を入力してください
+          </p>
 
-        {isDateOnly ? (
-          <CalendarGrid
-            selectedDates={new Set()}
-            onDatesChange={() => {}}
-            mode="availability"
-            availability={dateAvailability}
-            onAvailabilityChange={setDateAvailability}
-            allowedDates={allowedDates}
-          />
-        ) : (
-          <TimeGrid
-            slots={event.slots}
-            selectedSlots={new Set()}
-            onSlotsChange={() => {}}
-            mode="availability"
-            availability={availability}
-            onAvailabilityChange={setAvailability}
-            days={dayLabels}
+          {isDateOnly ? (
+            <CalendarGrid
+              selectedDates={new Set()}
+              onDatesChange={() => {}}
+              mode="availability"
+              availability={dateAvailability}
+              onAvailabilityChange={setDateAvailability}
+              allowedDates={allowedDates}
+            />
+          ) : (
+            <TimeGrid
+              slots={event.slots}
+              selectedSlots={new Set()}
+              onSlotsChange={() => {}}
+              mode="availability"
+              availability={availability}
+              onAvailabilityChange={setAvailability}
+              days={dayLabels}
+            />
+          )}
+
+          <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
+            入力済み: {currentAvailability.size} {inputUnit}
+          </p>
+        </div>
+
+        {error && (
+          <InlineNotification
+            kind="error"
+            title="エラー"
+            subtitle={error}
+            hideCloseButton
           />
         )}
 
-        <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
-          入力済み: {currentAvailability.size} {inputUnit}
-        </p>
-      </div>
-
-      {error && (
-        <div
-          style={{
-            padding: '1rem',
-            marginBottom: '1rem',
-            background: '#f8d7da',
-            color: '#721c24',
-            borderRadius: '4px',
-          }}
-        >
-          {error}
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <Button
+            kind="primary"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? '保存中...' : '変更を保存'}
+          </Button>
+          <Button
+            kind="secondary"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            キャンセル
+          </Button>
         </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '1rem' }}>
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          style={{
-            padding: '1rem 2rem',
-            fontSize: '1.1rem',
-            background: submitting ? '#ccc' : '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: submitting ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {submitting ? '保存中...' : '変更を保存'}
-        </button>
-        <button
-          onClick={onCancel}
-          disabled={submitting}
-          style={{
-            padding: '1rem 2rem',
-            fontSize: '1.1rem',
-            background: '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: submitting ? 'not-allowed' : 'pointer',
-          }}
-        >
-          キャンセル
-        </button>
-      </div>
+      </Stack>
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Button, ClickableTile, Tag, Link, Stack } from '@carbon/react';
+import { Add } from '@carbon/react/icons';
 import CreateEvent from './components/CreateEvent';
 import EditEvent from './components/EditEvent';
 import ViewEvent from './components/ViewEvent';
@@ -23,7 +25,6 @@ function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
   useEffect(() => {
-    // 履歴を読み込み
     setHistory(getHistoryItems());
   }, []);
 
@@ -78,107 +79,73 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Glassine</h1>
-      <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '2rem' }}>
-        ログイン不要の日程調整ツール
-      </p>
-      <button
-        onClick={navigateToCreate}
-        style={{
-          padding: '1rem 2rem',
-          fontSize: '1.1rem',
-          background: '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: 'pointer',
-        }}
-      >
-        新しいイベントを作成
-      </button>
-
-      {history.length > 0 && (
-        <div style={{ marginTop: '3rem' }}>
-          <h2 style={{ fontSize: '1.3rem', marginBottom: '1rem', color: '#333' }}>
-            最近のイベント
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {history.map((item, index) => (
-              <div
-                key={index}
-                style={{
-                  padding: '1rem',
-                  background: '#f8f9fa',
-                  borderRadius: '8px',
-                  border: '1px solid #e9ecef',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '0.2rem 0.5rem',
-                      background: item.type === 'created' ? '#007bff' : '#28a745',
-                      color: 'white',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    {item.type === 'created' ? '作成' : '回答'}
-                  </span>
-                  <span style={{ fontSize: '0.85rem', color: '#666' }}>
-                    {formatDate(item.type === 'created' ? item.createdAt : item.respondedAt)}
-                  </span>
-                </div>
-                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>{item.title}</div>
-                {item.type === 'responded' && (
-                  <div style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>
-                    {item.participantName} として回答
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {item.type === 'created' ? (
-                    <>
-                      <a
-                        href={`/e/${item.eventId}?token=${item.editToken}`}
-                        style={{
-                          fontSize: '0.9rem',
-                          color: '#007bff',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        編集・管理
-                      </a>
-                      <span style={{ color: '#ccc' }}>|</span>
-                      <a
-                        href={`/v/${item.eventId}?token=${item.viewToken}`}
-                        style={{
-                          fontSize: '0.9rem',
-                          color: '#007bff',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        結果を見る
-                      </a>
-                    </>
-                  ) : (
-                    <a
-                      href={`/v/${item.eventId}?token=${item.viewToken}`}
-                      style={{
-                        fontSize: '0.9rem',
-                        color: '#007bff',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      結果を見る
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+    <div className="glassine-home">
+      <Stack gap={6}>
+        <div>
+          <h1 className="cds--type-productive-heading-05">Glassine</h1>
+          <p className="cds--type-body-01" style={{ color: 'var(--cds-text-secondary)', marginTop: '0.5rem' }}>
+            ログイン不要の日程調整ツール
+          </p>
         </div>
-      )}
+
+        <Button
+          kind="primary"
+          size="lg"
+          renderIcon={Add}
+          onClick={navigateToCreate}
+        >
+          新しいイベントを作成
+        </Button>
+
+        {history.length > 0 && (
+          <div>
+            <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '1rem' }}>
+              最近のイベント
+            </h2>
+            <Stack gap={4}>
+              {history.map((item, index) => (
+                <ClickableTile
+                  key={index}
+                  href={item.type === 'created'
+                    ? `/e/${item.eventId}?token=${item.editToken}`
+                    : `/v/${item.eventId}?token=${item.viewToken}`
+                  }
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <Tag
+                      type={item.type === 'created' ? 'blue' : 'green'}
+                      size="sm"
+                    >
+                      {item.type === 'created' ? '作成' : '回答'}
+                    </Tag>
+                    <span className="cds--type-helper-text-01">
+                      {formatDate(item.type === 'created' ? item.createdAt : item.respondedAt)}
+                    </span>
+                  </div>
+                  <p className="cds--type-body-compact-01" style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
+                    {item.title}
+                  </p>
+                  {item.type === 'responded' && (
+                    <p className="cds--type-helper-text-01" style={{ marginBottom: '0.5rem' }}>
+                      {item.participantName} として回答
+                    </p>
+                  )}
+                  {item.type === 'created' && (
+                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                      <Link href={`/e/${item.eventId}?token=${item.editToken}`} size="sm">
+                        編集・管理
+                      </Link>
+                      <Link href={`/v/${item.eventId}?token=${item.viewToken}`} size="sm">
+                        結果を見る
+                      </Link>
+                    </div>
+                  )}
+                </ClickableTile>
+              ))}
+            </Stack>
+          </div>
+        )}
+      </Stack>
     </div>
   );
 }

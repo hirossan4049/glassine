@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import '@carbon/styles/css/styles.css';
-import './index.css';
+import './styles/carbon.scss';
+import './styles/app.scss';
 import App from './App';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
