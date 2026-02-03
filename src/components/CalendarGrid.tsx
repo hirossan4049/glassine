@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import type { Availability } from '../types';
 
 interface CalendarGridProps {
@@ -80,41 +80,51 @@ export default function CalendarGrid({
   allowedDates,
 }: CalendarGridProps) {
   const [isMouseDown, setIsMouseDown] = useState(false);
-  const [paintMode, setPaintMode] = useState<'add' | 'remove'>('add');
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [baseDate, setBaseDate] = useState(() => new Date());
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const dragActionRef = useRef<'add' | 'remove'>('add');
 
-  const handleCellMouseDown = useCallback((key: string, date: Date, shiftKey: boolean) => {
-    if (isPastDate(date)) return;
-    if (allowedDates && !allowedDates.has(key)) return;
-
-    // Shift+click for range selection
-    if (shiftKey && lastClickedKey) {
-      const keysInRange = getDateKeysInRange(lastClickedKey, key, allowedDates);
-
+  const applyKeys = useCallback(
+    (keys: string[], action?: 'add' | 'remove') => {
       if (mode === 'select') {
         const newDates = new Set(selectedDates);
-        for (const k of keysInRange) {
-          if (paintMode === 'add') {
-            newDates.add(k);
-          } else {
-            newDates.delete(k);
-          }
+        const op = action ?? 'add';
+        if (op === 'add') {
+          keys.forEach((k) => newDates.add(k));
+        } else {
+          keys.forEach((k) => newDates.delete(k));
         }
         onDatesChange(newDates);
       } else if (mode === 'availability' && onAvailabilityChange) {
         const newAvailability = new Map(availability);
-        for (const k of keysInRange) {
+        keys.forEach((k) => {
           if (selectedBrush === 'clear') {
             newAvailability.delete(k);
           } else {
             newAvailability.set(k, selectedBrush);
           }
-        }
+        });
         onAvailabilityChange(newAvailability);
       }
+    },
+    [availability, mode, onAvailabilityChange, onDatesChange, selectedBrush, selectedDates]
+  );
+
+  const handleCellMouseDown = useCallback((key: string, date: Date, shiftKey: boolean) => {
+    if (isPastDate(date)) return;
+    if (allowedDates && !allowedDates.has(key)) return;
+
+    const actionForSelect: 'add' | 'remove' = selectedDates.has(key) ? 'remove' : 'add';
+    dragActionRef.current = actionForSelect;
+
+    // Shift+click for range selection
+    if (shiftKey && lastClickedKey) {
+      const keysInRange = getDateKeysInRange(lastClickedKey, key, allowedDates);
+      setLastClickedKey(key);
+
+      applyKeys(keysInRange, actionForSelect);
       return;
     }
 
@@ -122,49 +132,25 @@ export default function CalendarGrid({
     setLastClickedKey(key);
 
     if (mode === 'select') {
-      const newDates = new Set(selectedDates);
-      if (newDates.has(key)) {
-        newDates.delete(key);
-        setPaintMode('remove');
-      } else {
-        newDates.add(key);
-        setPaintMode('add');
-      }
-      onDatesChange(newDates);
+      applyKeys([key], actionForSelect);
     } else if (mode === 'availability' && onAvailabilityChange) {
-      const newAvailability = new Map(availability);
-      if (selectedBrush === 'clear') {
-        newAvailability.delete(key);
-      } else {
-        newAvailability.set(key, selectedBrush);
-      }
-      onAvailabilityChange(newAvailability);
+      applyKeys([key]);
     }
-  }, [selectedDates, onDatesChange, mode, availability, onAvailabilityChange, allowedDates, selectedBrush, lastClickedKey, paintMode]);
+  }, [allowedDates, applyKeys, lastClickedKey, selectedDates]);
 
   const handleCellMouseEnter = useCallback((key: string, date: Date) => {
     if (!isMouseDown) return;
     if (isPastDate(date)) return;
     if (allowedDates && !allowedDates.has(key)) return;
 
-    if (mode === 'select') {
-      const newDates = new Set(selectedDates);
-      if (paintMode === 'add') {
-        newDates.add(key);
-      } else {
-        newDates.delete(key);
-      }
-      onDatesChange(newDates);
-    } else if (mode === 'availability' && onAvailabilityChange) {
-      const newAvailability = new Map(availability);
-      if (selectedBrush === 'clear') {
-        newAvailability.delete(key);
-      } else {
-        newAvailability.set(key, selectedBrush);
-      }
-      onAvailabilityChange(newAvailability);
+    if (lastClickedKey) {
+      // Excel風: ドラッグ中は起点と現在セルで囲まれた範囲をまとめて塗る
+      const keysInRange = getDateKeysInRange(lastClickedKey, key, allowedDates);
+      applyKeys(keysInRange, dragActionRef.current);
+    } else {
+      applyKeys([key], dragActionRef.current);
     }
-  }, [isMouseDown, paintMode, selectedDates, onDatesChange, mode, selectedBrush, availability, onAvailabilityChange, allowedDates]);
+  }, [allowedDates, applyKeys, isMouseDown, lastClickedKey]);
 
   const handleMouseUp = useCallback(() => {
     setIsMouseDown(false);
@@ -212,8 +198,7 @@ export default function CalendarGrid({
     });
   };
 
-  const renderMonth = (year: number, month: number) => {
-    const days = getMonthDays(year, month);
+  const renderMonth = (year: number, month: number, days: (Date | null)[]) => {
     const monthName = new Date(year, month).toLocaleDateString('ja-JP', {
       year: 'numeric',
       month: 'long',
@@ -302,6 +287,42 @@ export default function CalendarGrid({
   const month2Date = new Date(baseDate);
   month2Date.setMonth(month2Date.getMonth() + 1);
   const month2 = { year: month2Date.getFullYear(), month: month2Date.getMonth() };
+  const month1Days = getMonthDays(month1.year, month1.month);
+  const month2Days = getMonthDays(month2.year, month2.month);
+
+  const monthData = useMemo(
+    () => [
+      { year: month1.year, month: month1.month, days: month1Days },
+      { year: month2.year, month: month2.month, days: month2Days },
+    ],
+    [month1.year, month1.month, month1Days, month2.year, month2.month, month2Days]
+  );
+
+  const collectWeekdayKeys = useCallback(
+    (weekday: number) => {
+      const keys: string[] = [];
+      monthData.forEach(({ days }) => {
+        days.forEach((date) => {
+          if (!date) return;
+          if (date.getDay() !== weekday) return;
+          if (isPastDate(date)) return;
+          const key = dateKey(date);
+          if (allowedDates && !allowedDates.has(key)) return;
+          keys.push(key);
+        });
+      });
+      return keys;
+    },
+    [allowedDates, monthData]
+  );
+
+  const resolveBulkAction = useCallback(
+    (keys: string[]) => {
+      const allSelected = keys.every((k) => selectedDates.has(k));
+      return allSelected ? 'remove' : 'add';
+    },
+    [selectedDates]
+  );
 
   const brushOptions: { value: Availability | 'clear'; label: string; color: string; symbol: string }[] = [
     { value: 'available', label: '参加可能', color: '#28a745', symbol: '○' },
@@ -312,8 +333,16 @@ export default function CalendarGrid({
 
   return (
     <div style={{ userSelect: 'none' }} ref={gridRef}>
-      <div style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
-        💡 ドラッグで塗り / Shift+クリックで範囲選択
+      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '0.9rem', color: '#555' }}>💡 ドラッグ塗り / Shift+クリックで範囲 / 曜日ヘッダーで列まとめて塗り</div>
+        {mode === 'select' && (
+          <div style={{ fontSize: '0.85rem', color: '#555' }}>クリックでトグル / ドラッグで範囲</div>
+        )}
+        {lastClickedKey && (
+          <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: '#444', background: '#f8f9fa', padding: '0.35rem 0.6rem', borderRadius: '6px', border: '1px solid #e9ecef' }}>
+            選択中: {mode === 'select' ? selectedDates.size : availability.size} / 起点 {lastClickedKey}
+          </div>
+        )}
       </div>
       {mode === 'availability' && (
         <div style={{ marginBottom: '1rem' }}>
@@ -372,9 +401,37 @@ export default function CalendarGrid({
         </button>
       </div>
 
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.85rem', color: '#555' }}>曜日列をまとめて塗る:</span>
+        {WEEKDAYS.map((day, idx) => {
+          const keys = collectWeekdayKeys(idx);
+          const disabled = keys.length === 0;
+          return (
+            <button
+              key={day}
+              type="button"
+              disabled={disabled}
+              onClick={() => applyKeys(keys, resolveBulkAction(keys))}
+              style={{
+                padding: '0.35rem 0.7rem',
+                minWidth: '44px',
+                background: '#fff',
+                color: disabled ? '#aaa' : '#0d6efd',
+                border: '1px solid #d0d7de',
+                borderRadius: '4px',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                boxShadow: disabled ? 'none' : '0 1px 2px rgba(0,0,0,0.05)',
+              }}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
       <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-        {renderMonth(month1.year, month1.month)}
-        {renderMonth(month2.year, month2.month)}
+        {renderMonth(month1.year, month1.month, month1Days)}
+        {renderMonth(month2.year, month2.month, month2Days)}
       </div>
     </div>
   );

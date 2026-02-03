@@ -64,6 +64,28 @@ function getKeysInRange(
   return keys;
 }
 
+// Get keys within the same day column (vertical drag)
+function getVerticalKeys(startKey: string, endKey: string, hours: number[]): string[] {
+  const start = parseSlotKey(startKey);
+  const end = parseSlotKey(endKey);
+
+  const startSlotIndex = start.hour * 2 + (start.minute === 30 ? 1 : 0);
+  const endSlotIndex = end.hour * 2 + (end.minute === 30 ? 1 : 0);
+  const minSlotIndex = Math.min(startSlotIndex, endSlotIndex);
+  const maxSlotIndex = Math.max(startSlotIndex, endSlotIndex);
+
+  const keys: string[] = [];
+  for (const hour of hours) {
+    for (const minute of [0, 30]) {
+      const slotIndex = hour * 2 + (minute === 30 ? 1 : 0);
+      if (slotIndex >= minSlotIndex && slotIndex <= maxSlotIndex) {
+        keys.push(slotKey(start.day, hour, minute));
+      }
+    }
+  }
+  return keys;
+}
+
 export default function TimeGrid({
   slots: _slots,
   selectedSlots,
@@ -75,37 +97,74 @@ export default function TimeGrid({
   startDate,
 }: TimeGridProps) {
   const [isMouseDown, setIsMouseDown] = useState(false);
-  const [paintMode, setPaintMode] = useState<'add' | 'remove'>('add');
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
+  const [hoveredCell, setHoveredCell] = useState<{ dayIndex: number; hour: number; minute: number } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const dragActionRef = useRef<'add' | 'remove'>('add'); // current drag action in select mode
+  const dragAxisRef = useRef<'vertical' | 'horizontal' | null>(null); // lock drag axis after first move
 
-  const handleCellMouseDown = useCallback((key: string, shiftKey: boolean) => {
-    // Shift+click for range selection
-    if (shiftKey && lastClickedKey) {
-      const keysInRange = getKeysInRange(lastClickedKey, key, days, HOURS);
+  const getDayKeys = useCallback(
+    (dayIndex: number) => {
+      const keys: string[] = [];
+      for (const hour of HOURS) {
+        for (const minute of [0, 30]) {
+          keys.push(slotKey(dayIndex, hour, minute));
+        }
+      }
+      return keys;
+    },
+    []
+  );
 
+  const getTimeRowKeys = useCallback(
+    (hour: number, minute: number) => {
+      const keys: string[] = [];
+      days.forEach((_, dayIndex) => {
+        keys.push(slotKey(dayIndex, hour, minute));
+      });
+      return keys;
+    },
+    [days]
+  );
+
+  const applyKeys = useCallback(
+    (keys: string[], action?: 'add' | 'remove') => {
       if (mode === 'select') {
         const newSlots = new Set(selectedSlots);
-        for (const k of keysInRange) {
-          if (paintMode === 'add') {
-            newSlots.add(k);
-          } else {
-            newSlots.delete(k);
-          }
+        const op = action ?? 'add';
+        if (op === 'add') {
+          keys.forEach((k) => newSlots.add(k));
+        } else {
+          keys.forEach((k) => newSlots.delete(k));
         }
         onSlotsChange(newSlots);
       } else if (mode === 'availability' && onAvailabilityChange) {
         const newAvailability = new Map(availability);
-        for (const k of keysInRange) {
+        keys.forEach((k) => {
           if (selectedBrush === 'clear') {
             newAvailability.delete(k);
           } else {
             newAvailability.set(k, selectedBrush);
           }
-        }
+        });
         onAvailabilityChange(newAvailability);
       }
+    },
+    [availability, mode, onAvailabilityChange, onSlotsChange, selectedBrush, selectedSlots]
+  );
+
+  const handleCellMouseDown = useCallback((key: string, shiftKey: boolean) => {
+    const actionForSelect: 'add' | 'remove' = selectedSlots.has(key) ? 'remove' : 'add';
+    dragActionRef.current = actionForSelect;
+    dragAxisRef.current = null;
+
+    // Shift+click for range selection
+    if (shiftKey && lastClickedKey) {
+      const keysInRange = getKeysInRange(lastClickedKey, key, days, HOURS);
+      setLastClickedKey(key);
+
+      applyKeys(keysInRange, actionForSelect);
       return;
     }
 
@@ -113,50 +172,42 @@ export default function TimeGrid({
     setLastClickedKey(key);
 
     if (mode === 'select') {
-      const newSlots = new Set(selectedSlots);
-      if (newSlots.has(key)) {
-        newSlots.delete(key);
-        setPaintMode('remove');
-      } else {
-        newSlots.add(key);
-        setPaintMode('add');
-      }
-      onSlotsChange(newSlots);
+      applyKeys([key], actionForSelect);
     } else if (mode === 'availability' && onAvailabilityChange) {
-      const newAvailability = new Map(availability);
-      if (selectedBrush === 'clear') {
-        newAvailability.delete(key);
-      } else {
-        newAvailability.set(key, selectedBrush);
-      }
-      onAvailabilityChange(newAvailability);
+      applyKeys([key]);
     }
-  }, [selectedSlots, onSlotsChange, mode, availability, onAvailabilityChange, selectedBrush, lastClickedKey, paintMode, days]);
+  }, [applyKeys, days, lastClickedKey, selectedSlots]);
 
   const handleCellMouseEnter = useCallback((key: string) => {
     if (!isMouseDown) return;
+    if (!lastClickedKey) return;
 
-    if (mode === 'select') {
-      const newSlots = new Set(selectedSlots);
-      if (paintMode === 'add') {
-        newSlots.add(key);
-      } else {
-        newSlots.delete(key);
+    const start = parseSlotKey(lastClickedKey);
+    const current = parseSlotKey(key);
+
+    // Decide axis on first movement
+    if (!dragAxisRef.current) {
+      if (current.day !== start.day) {
+        dragAxisRef.current = 'horizontal';
+      } else if (current.hour !== start.hour || current.minute !== start.minute) {
+        dragAxisRef.current = 'vertical';
       }
-      onSlotsChange(newSlots);
-    } else if (mode === 'availability' && onAvailabilityChange) {
-      const newAvailability = new Map(availability);
-      if (selectedBrush === 'clear') {
-        newAvailability.delete(key);
-      } else {
-        newAvailability.set(key, selectedBrush);
-      }
-      onAvailabilityChange(newAvailability);
     }
-  }, [isMouseDown, paintMode, selectedSlots, onSlotsChange, mode, selectedBrush, availability, onAvailabilityChange]);
+
+    if (dragAxisRef.current === 'vertical') {
+      const keysInColumn = getVerticalKeys(lastClickedKey, key, HOURS);
+      applyKeys(keysInColumn, dragActionRef.current);
+      return;
+    }
+
+    // default (horizontal or mixed): rectangle
+    const keysInRange = getKeysInRange(lastClickedKey, key, days, HOURS);
+    applyKeys(keysInRange, dragActionRef.current);
+  }, [applyKeys, days, isMouseDown, lastClickedKey]);
 
   const handleMouseUp = useCallback(() => {
     setIsMouseDown(false);
+    dragAxisRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -199,10 +250,33 @@ export default function TimeGrid({
     return day;
   });
 
+  const resolveBulkAction = (keys: string[]): 'add' | 'remove' => {
+    const allSelected = keys.every((k) => selectedSlots.has(k));
+    return allSelected ? 'remove' : 'add';
+  };
+
+  const handleDayHeaderClick = (dayIndex: number) => {
+    const keys = getDayKeys(dayIndex);
+    applyKeys(keys, resolveBulkAction(keys));
+  };
+
+  const handleTimeHeaderClick = (hour: number, minute: number) => {
+    const keys = getTimeRowKeys(hour, minute);
+    applyKeys(keys, resolveBulkAction(keys));
+  };
+
   return (
     <div style={{ overflowX: 'auto', userSelect: 'none' }}>
-      <div style={{ marginBottom: '0.5rem', fontSize: '0.85rem', color: '#666' }}>
-        💡 ドラッグで塗り / Shift+クリックで範囲選択
+      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '0.9rem', color: '#555' }}>💡 ドラッグ塗り / Shift+クリックで範囲 / 見出しクリックで列・行まとめて塗り</div>
+        {mode === 'select' && (
+          <div style={{ fontSize: '0.85rem', color: '#555' }}>クリックでトグル / ドラッグで範囲</div>
+        )}
+        {lastClickedKey && (
+          <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: '#444', background: '#f8f9fa', padding: '0.35rem 0.6rem', borderRadius: '6px', border: '1px solid #e9ecef' }}>
+            選択中: {mode === 'select' ? selectedSlots.size : availability.size} / 起点 {lastClickedKey}
+          </div>
+        )}
       </div>
       {mode === 'availability' && (
         <div style={{ marginBottom: '1rem' }}>
@@ -244,6 +318,7 @@ export default function TimeGrid({
           border: '1px solid #ddd',
           minWidth: 'fit-content',
         }}
+        onMouseLeave={() => setHoveredCell(null)}
       >
         {/* Header row */}
         <div style={{ background: '#f0f0f0', padding: '8px', textAlign: 'center', fontWeight: 'bold' }}>
@@ -252,6 +327,8 @@ export default function TimeGrid({
         {dayHeaders.map((day, index) => (
           <div
             key={index}
+            onMouseDown={() => handleDayHeaderClick(index)}
+            onMouseEnter={() => setHoveredCell({ dayIndex: index, hour: -1, minute: -1 })}
             style={{ background: '#f0f0f0', padding: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.8rem' }}
           >
             {day}
@@ -274,16 +351,23 @@ export default function TimeGrid({
                     alignItems: 'center',
                     justifyContent: 'flex-end',
                   }}
+                  onMouseDown={() => handleTimeHeaderClick(hour, minute)}
+                  onMouseEnter={() => setHoveredCell({ dayIndex: -1, hour, minute })}
                 >
                   {timeLabel}
                 </div>
                 {days.map((_, dayIndex) => {
                   const key = slotKey(dayIndex, hour, minute);
+                  const isHoverRow = hoveredCell?.hour === hour && hoveredCell?.minute === minute;
+                  const isHoverCol = hoveredCell?.dayIndex === dayIndex;
                   return (
                     <div
                       key={key}
                       onMouseDown={(e) => handleCellMouseDown(key, e.shiftKey)}
-                      onMouseEnter={() => handleCellMouseEnter(key)}
+                      onMouseEnter={() => {
+                        setHoveredCell({ dayIndex, hour, minute });
+                        handleCellMouseEnter(key);
+                      }}
                       onTouchStart={() => handleCellMouseDown(key, false)}
                       onTouchMove={(e) => {
                         const touch = e.touches[0];
@@ -296,7 +380,11 @@ export default function TimeGrid({
                         background: getCellColor(key),
                         height: '30px',
                         cursor: 'pointer',
-                        transition: 'background 0.1s',
+                        transition: 'background 0.08s, box-shadow 0.08s',
+                        boxShadow:
+                          isHoverRow || isHoverCol
+                            ? 'inset 0 0 0 2px rgba(13,110,253,0.25)'
+                            : 'none',
                       }}
                     />
                   );
