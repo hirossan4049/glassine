@@ -480,7 +480,7 @@ export default function TimeGrid({
         style={{
           display: 'grid',
           gridTemplateColumns: isMobile
-            ? `${timeCellWidth} repeat(${days.length}, ${cellWidth})`
+            ? `${timeCellWidth} repeat(${visibleDayIndices.length}, ${cellWidth})`
             : `72px repeat(${days.length}, 72px)`,
             gap: '1px',
             background: palette.border,
