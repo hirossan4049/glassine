@@ -381,7 +381,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
             <Stack gap={2}>
               <div>
                 <p className="cds--type-body-01" style={{ marginBottom: '0.25rem' }}>
-                  {formatSlotDisplay(confirmedSlot, event.mode)}
+                  {confirmedSlot ? formatSlotDisplay(confirmedSlot, event.mode) : ''}
                 </p>
                 <Tag type="green" size="sm">確定済み</Tag>
               </div>
