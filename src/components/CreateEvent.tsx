@@ -28,6 +28,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [mode, setMode] = useState<EventMode>('datetime');
+  const [webhookUrl, setWebhookUrl] = useState('');
   const [selectedSlots, setSelectedSlots] = useState<Set<string>>(new Set());
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
@@ -112,7 +113,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       const response = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, slots, mode }),
+        body: JSON.stringify({ title, description, slots, mode, webhookUrl: webhookUrl.trim() || undefined }),
       });
 
       const data = await response.json() as any;
@@ -165,6 +166,15 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
+        />
+
+        <TextInput
+          id="webhook-url"
+          labelText="Slack / Discord Webhook URL（任意）"
+          placeholder="https://..."
+          value={webhookUrl}
+          onChange={(e) => setWebhookUrl(e.target.value)}
+          type="url"
         />
 
         <div>
