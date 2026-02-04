@@ -26,6 +26,15 @@ interface CalendarGridProps {
   allowedDates?: Set<string>;
 }
 
+// Drag state for preview rendering (no state updates during drag)
+interface DragState {
+  anchorKey: string;
+  currentKey: string;
+  action: 'add' | 'remove';
+  baseDates: Set<string>;
+  baseAvailability: Map<string, Availability>;
+}
+
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 const palette = {
@@ -101,6 +110,11 @@ function getDateKeysInRange(startKey: string, endKey: string, allowedDates?: Set
   return keys;
 }
 
+// Create a Set of keys in the range for fast lookup
+function getDateKeysInRangeSet(startKey: string, endKey: string, allowedDates?: Set<string>): Set<string> {
+  return new Set(getDateKeysInRange(startKey, endKey, allowedDates));
+}
+
 export default function CalendarGrid({
   selectedDates,
   onDatesChange,
@@ -110,19 +124,25 @@ export default function CalendarGrid({
   allowedDates,
 }: CalendarGridProps) {
   const isMobile = useIsMobile();
-  const [isMouseDown, setIsMouseDown] = useState(false);
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [baseDate, setBaseDate] = useState(() => new Date());
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const dragActionRef = useRef<'add' | 'remove'>('add');
 
+  // Drag state as ref (no re-render during drag, only preview)
+  const dragRef = useRef<DragState | null>(null);
+  // Force re-render for preview during drag
+  const [dragPreviewKey, setDragPreviewKey] = useState(0);
+
+  const rafRef = useRef<number | null>(null);
+  const pendingCurrentKeyRef = useRef<string | null>(null);
+
+  // Apply keys for bulk operations (weekday header clicks)
   const applyKeys = useCallback(
-    (keys: string[], action?: 'add' | 'remove') => {
+    (keys: string[], action: 'add' | 'remove') => {
       if (mode === 'select') {
         const newDates = new Set(selectedDates);
-        const op = action ?? 'add';
-        if (op === 'add') {
+        if (action === 'add') {
           keys.forEach((k) => newDates.add(k));
         } else {
           keys.forEach((k) => newDates.delete(k));
@@ -143,73 +163,164 @@ export default function CalendarGrid({
     [availability, mode, onAvailabilityChange, onDatesChange, selectedBrush, selectedDates]
   );
 
-  const handleCellMouseDown = useCallback((key: string, date: Date, shiftKey: boolean) => {
+  // Start drag
+  const handlePointerDown = useCallback((key: string, date: Date, shiftKey: boolean, e: React.PointerEvent) => {
     if (isPastDate(date)) return;
     if (allowedDates && !allowedDates.has(key)) return;
 
-    const actionForSelect: 'add' | 'remove' = selectedDates.has(key) ? 'remove' : 'add';
-    dragActionRef.current = actionForSelect;
-
-    // Shift+click for range selection
+    // Shift+click for range selection (immediate apply, no drag)
     if (shiftKey && lastClickedKey) {
       const keysInRange = getDateKeysInRange(lastClickedKey, key, allowedDates);
+      const action: 'add' | 'remove' = selectedDates.has(lastClickedKey) ? 'add' : 'remove';
+      applyKeys(keysInRange, action);
       setLastClickedKey(key);
-
-      applyKeys(keysInRange, actionForSelect);
       return;
     }
 
-    setIsMouseDown(true);
+    // Determine action based on anchor cell state
+    const action: 'add' | 'remove' = selectedDates.has(key) ? 'remove' : 'add';
+
+    // Initialize drag state
+    dragRef.current = {
+      anchorKey: key,
+      currentKey: key,
+      action,
+      baseDates: new Set(selectedDates),
+      baseAvailability: new Map(availability),
+    };
+
     setLastClickedKey(key);
+    setDragPreviewKey((k) => k + 1);
 
-    if (mode === 'select') {
-      applyKeys([key], actionForSelect);
-    } else if (mode === 'availability' && onAvailabilityChange) {
-      applyKeys([key]);
-    }
-  }, [allowedDates, applyKeys, lastClickedKey, selectedDates]);
+    // Capture pointer for smooth drag even outside grid
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [allowedDates, applyKeys, availability, lastClickedKey, selectedDates]);
 
-  const handleCellMouseEnter = useCallback((key: string, date: Date) => {
-    if (!isMouseDown) return;
-    if (isPastDate(date)) return;
-    if (allowedDates && !allowedDates.has(key)) return;
+  // Update drag preview with RAF throttling
+  const updateDragPreview = useCallback((key: string) => {
+    pendingCurrentKeyRef.current = key;
 
-    if (lastClickedKey) {
-      // Excel風: ドラッグ中は起点と現在セルで囲まれた範囲をまとめて塗る
-      const keysInRange = getDateKeysInRange(lastClickedKey, key, allowedDates);
-      applyKeys(keysInRange, dragActionRef.current);
-    } else {
-      applyKeys([key], dragActionRef.current);
-    }
-  }, [allowedDates, applyKeys, isMouseDown, lastClickedKey]);
+    if (rafRef.current !== null) return;
 
-  const handleMouseUp = useCallback(() => {
-    setIsMouseDown(false);
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      if (dragRef.current && pendingCurrentKeyRef.current) {
+        dragRef.current.currentKey = pendingCurrentKeyRef.current;
+        setDragPreviewKey((k) => k + 1);
+      }
+    });
   }, []);
 
-  useEffect(() => {
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchend', handleMouseUp);
-    return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchend', handleMouseUp);
-    };
-  }, [handleMouseUp]);
+  // Handle pointer move (drag)
+  const handlePointerMove = useCallback((key: string, date: Date) => {
+    if (!dragRef.current) return;
+    if (isPastDate(date)) return;
+    if (allowedDates && !allowedDates.has(key)) return;
+    if (dragRef.current.currentKey === key) return;
+    updateDragPreview(key);
+  }, [allowedDates, updateDragPreview]);
 
-  const getCellColor = (key: string, date: Date): string => {
+  // Finalize drag and apply changes
+  const handlePointerUp = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    const keysInRange = getDateKeysInRange(drag.anchorKey, drag.currentKey, allowedDates);
+
+    if (mode === 'select') {
+      let newDates: Set<string>;
+      if (drag.action === 'add') {
+        // baseDates ∪ range
+        newDates = new Set(drag.baseDates);
+        keysInRange.forEach((k) => newDates.add(k));
+      } else {
+        // baseDates \ range
+        newDates = new Set(drag.baseDates);
+        keysInRange.forEach((k) => newDates.delete(k));
+      }
+      onDatesChange(newDates);
+    } else if (mode === 'availability' && onAvailabilityChange) {
+      const newAvailability = new Map(drag.baseAvailability);
+      keysInRange.forEach((k) => {
+        if (selectedBrush === 'clear') {
+          newAvailability.delete(k);
+        } else {
+          newAvailability.set(k, selectedBrush);
+        }
+      });
+      onAvailabilityChange(newAvailability);
+    }
+
+    dragRef.current = null;
+    setDragPreviewKey((k) => k + 1);
+  }, [allowedDates, mode, onAvailabilityChange, onDatesChange, selectedBrush]);
+
+  // Global pointer up handler for edge cases
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      if (dragRef.current) {
+        handlePointerUp();
+      }
+    };
+    document.addEventListener('pointerup', handleGlobalPointerUp);
+    document.addEventListener('pointercancel', handleGlobalPointerUp);
+    return () => {
+      document.removeEventListener('pointerup', handleGlobalPointerUp);
+      document.removeEventListener('pointercancel', handleGlobalPointerUp);
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [handlePointerUp]);
+
+  // Get cell color considering drag preview
+  const getCellColor = useCallback((key: string, date: Date): string => {
     if (isPastDate(date)) return palette.layerAlt;
     if (allowedDates && !allowedDates.has(key)) return palette.layer;
 
+    const drag = dragRef.current;
+
     if (mode === 'select') {
+      if (drag) {
+        const inRange = getDateKeysInRangeSet(drag.anchorKey, drag.currentKey, allowedDates).has(key);
+        if (drag.action === 'add') {
+          // Preview: baseDates ∪ range
+          return (drag.baseDates.has(key) || inRange) ? palette.accent : palette.layer;
+        } else {
+          // Preview: baseDates \ range
+          return (drag.baseDates.has(key) && !inRange) ? palette.accent : palette.layer;
+        }
+      }
       return selectedDates.has(key) ? palette.accent : palette.layer;
     } else {
+      // Availability mode
+      if (drag) {
+        const inRange = getDateKeysInRangeSet(drag.anchorKey, drag.currentKey, allowedDates).has(key);
+        if (inRange) {
+          if (selectedBrush === 'clear') return palette.layer;
+          if (selectedBrush === 'available') return palette.available;
+          if (selectedBrush === 'maybe') return palette.maybe;
+          if (selectedBrush === 'unavailable') return palette.unavailable;
+        }
+        // Not in range: show base state
+        const avail = drag.baseAvailability.get(key);
+        if (avail === 'available') return palette.available;
+        if (avail === 'maybe') return palette.maybe;
+        if (avail === 'unavailable') return palette.unavailable;
+        return palette.layer;
+      }
       const avail = availability.get(key);
       if (avail === 'available') return palette.available;
       if (avail === 'maybe') return palette.maybe;
       if (avail === 'unavailable') return palette.unavailable;
       return palette.layer;
     }
-  };
+  }, [allowedDates, availability, mode, selectedBrush, selectedDates, dragPreviewKey]);
 
   const getTextColor = (key: string, date: Date): string => {
     if (isPastDate(date)) return palette.textSubtle;
@@ -228,6 +339,15 @@ export default function CalendarGrid({
       return newDate;
     });
   };
+
+  // Find cell key from pointer coordinates
+  const getCellKeyFromPoint = useCallback((x: number, y: number): { key: string; date: Date } | null => {
+    const element = document.elementFromPoint(x, y);
+    const cellKey = element?.getAttribute('data-key');
+    if (!cellKey) return null;
+    const [y2, m, d] = cellKey.split('-').map(Number);
+    return { key: cellKey, date: new Date(y2, m - 1, d) };
+  }, []);
 
   const renderMonth = (year: number, month: number, days: (Date | null)[]) => {
     const monthName = new Date(year, month).toLocaleDateString('ja-JP', {
@@ -270,6 +390,12 @@ export default function CalendarGrid({
             borderRadius: '8px',
             overflow: 'hidden',
           }}
+          onPointerMove={(e) => {
+            if (!dragRef.current) return;
+            const result = getCellKeyFromPoint(e.clientX, e.clientY);
+            if (result) handlePointerMove(result.key, result.date);
+          }}
+          onPointerUp={handlePointerUp}
         >
           {WEEKDAYS.map((day, i) => (
             <div
@@ -301,18 +427,8 @@ export default function CalendarGrid({
               <div
                 key={key}
                 data-key={key}
-                onMouseDown={(e) => handleCellMouseDown(key, date, e.shiftKey)}
-                onMouseEnter={() => handleCellMouseEnter(key, date)}
-                onTouchStart={() => handleCellMouseDown(key, date, false)}
-                onTouchMove={(e) => {
-                  const touch = e.touches[0];
-                  const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                  const cellKey = element?.getAttribute('data-key');
-                  if (cellKey) {
-                    const [y, m, d] = cellKey.split('-').map(Number);
-                    handleCellMouseEnter(cellKey, new Date(y, m - 1, d));
-                  }
-                }}
+                onPointerDown={(e) => handlePointerDown(key, date, e.shiftKey, e)}
+                onPointerEnter={() => handlePointerMove(key, date)}
                 style={{
                   background: getCellColor(key, date),
                   height: '48px',
@@ -328,6 +444,7 @@ export default function CalendarGrid({
                   outline: isToday ? `2px solid ${palette.accent}` : 'none',
                   outlineOffset: '-2px',
                   position: 'relative',
+                  touchAction: 'none',
                 }}
               >
                 <span
@@ -428,7 +545,7 @@ export default function CalendarGrid({
         }}
       >
         <div style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: palette.text }}>
-          💡 {isMobile ? 'ドラッグで塗る' : 'Excelドラッグ + ペイント塗りのハイブリッド'}
+          {isMobile ? 'ドラッグで塗る' : 'Excelドラッグ + ペイント塗りのハイブリッド'}
         </div>
         {!isMobile && (
           <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>
