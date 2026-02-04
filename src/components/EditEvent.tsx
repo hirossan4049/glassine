@@ -239,11 +239,20 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
           { key: 'unavailable', header: '×' },
         ];
 
-  const rows = aggregation.slice(0, 10).map((agg) => {
+  const topAggregation = aggregation.slice(0, 10);
+  const maxScore = topAggregation.length > 0 ? Math.max(...topAggregation.map(a => a.score)) : 0;
+  const minScore = topAggregation.length > 0 ? Math.min(...topAggregation.map(a => a.score)) : 0;
+  const scoreRange = maxScore - minScore;
+
+  const rows = topAggregation.map((agg) => {
     const confirmedIndices = event.confirmedSlots
       ? JSON.parse(event.confirmedSlots)
       : [];
     const isConfirmed = confirmedIndices.includes(agg.index);
+
+    // スコアに基づく背景色の濃淡を計算 (0.1 ~ 0.4 の範囲)
+    const normalizedScore = scoreRange > 0 ? (agg.score - minScore) / scoreRange : 1;
+    const opacity = 0.1 + normalizedScore * 0.3;
 
     return {
       id: String(agg.index),
@@ -254,6 +263,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
       score: agg.score,
       isConfirmed,
       index: agg.index,
+      backgroundColor: `rgba(36, 161, 72, ${opacity})`, // 緑色の濃淡
     };
   });
 
@@ -342,7 +352,11 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                       {tableRows.map((row) => {
                         const rowData = rows.find(r => r.id === row.id);
                         return (
-                          <TableRow {...getRowProps({ row })} key={row.id}>
+                          <TableRow
+                            {...getRowProps({ row })}
+                            key={row.id}
+                            style={{ backgroundColor: rowData?.backgroundColor }}
+                          >
                             {row.cells.map((cell) => {
                               if (cell.info.header === 'action' && rowData) {
                                 return (
