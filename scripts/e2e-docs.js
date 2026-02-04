@@ -14,19 +14,19 @@ async function record() {
   }
 
   const browser = await chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+  const videoDir = join(process.cwd(), 'tmp', 'videos');
   const context = await browser.newContext({
     recordVideo: {
-      dir: join(process.cwd(), 'tmp', 'videos'),
+      dir: videoDir,
       size: { width: 1280, height: 720 },
     },
   });
   const page = await context.newPage();
 
-  await page.goto(BASE_URL);
-  await page.waitForTimeout(500);
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 
   await page.getByRole('button', { name: '新しいイベントを作成' }).click();
-  await page.waitForTimeout(300);
+  await page.waitForLoadState('networkidle');
 
   await page.getByLabel('イベント名').fill('デモイベント');
   await page.getByLabel('説明').fill('ドキュメント用デモ');
@@ -43,9 +43,13 @@ async function record() {
   }
 
   await page.getByRole('button', { name: 'イベントを作成' }).click();
-  await page.waitForTimeout(1000);
+  await page.waitForURL('**/e/**', { waitUntil: 'domcontentloaded' });
 
-  const videoPath = await context.video().path();
+  const video = page.video();
+  if (!video) {
+    throw new Error('Video was not recorded');
+  }
+  const videoPath = await video.path();
   await browser.close();
 
   if (!existsSync(OUTPUT_DIR)) {
