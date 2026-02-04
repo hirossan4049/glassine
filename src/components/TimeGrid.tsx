@@ -414,16 +414,15 @@ export default function TimeGrid({
       <div
         style={{
           overflowX: 'auto',
-          overflowY: 'auto',
+          overflowY: isMobile ? 'hidden' : 'auto',
           maxWidth: '100%',
-          minHeight: isMobile ? '60vh' : undefined,
           userSelect: 'none',
           background: palette.layer,
           padding: '1rem',
           borderRadius: 0,
           border: `1px solid ${palette.border}`,
           boxShadow: 'none',
-          touchAction: 'pan-x pan-y',
+          touchAction: isMobile ? 'pan-x' : 'pan-x pan-y',
         }}
       >
       <div style={{ marginBottom: '0.75rem', display: 'flex', gap: isMobile ? '0.5rem' : '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
