@@ -58,6 +58,16 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
     loadAggregation();
   }, [eventId, token]);
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadEvent();
+      loadAggregation();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [eventId, token]);
+
   const loadEvent = async () => {
     try {
       const response = await fetch(`/api/events/${eventId}?token=${token}`);
