@@ -26,7 +26,7 @@ interface DragState {
 }
 
 const DEFAULT_DAYS = ['月', '火', '水', '木', '金', '土', '日'];
-const HOURS = Array.from({ length: 15 }, (_, i) => i + 9); // 9:00 - 23:00
+const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0:00 - 23:00
 
 const palette = {
   layer: 'var(--cds-layer-01, #ffffff)',
