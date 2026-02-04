@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import { Button, Layer } from '@carbon/react';
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TimeSlot, Availability } from '../types';
-import { useIsMobile } from '../hooks/useMediaQuery';
+import { useIsMobile, useWindowWidth } from '../hooks/useMediaQuery';
 import { TIME_GRID, STATUS_DISPLAY } from '../constants/layout';
 
 interface TimeGridProps {
@@ -93,8 +93,12 @@ function getKeysInRectSet(anchorKey: string, currentKey: string, daysCount: numb
 }
 
 // Navigation constants for mobile
-const VISIBLE_DAYS_MOBILE = 3;
 const VISIBLE_HOURS_MOBILE = 6;
+const CELL_WIDTH_PX = 48;
+const NAV_BUTTONS_WIDTH = 88; // 2 × 44px
+const CONTAINER_PADDING = 32; // 1rem × 2
+const NAV_GAP = 8; // 4px × 2
+const TIME_CELL_WIDTH_PX = 56;
 
 export default function TimeGrid({
   slots: _slots,
@@ -107,6 +111,7 @@ export default function TimeGrid({
   startDate,
 }: TimeGridProps) {
   const isMobile = useIsMobile();
+  const windowWidth = useWindowWidth();
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ dayIndex: number; hour: number; minute: number } | null>(null);
@@ -115,12 +120,18 @@ export default function TimeGrid({
   const [dayOffset, setDayOffset] = useState(0);
   const [timeOffset, setTimeOffset] = useState(0);
 
+  // Calculate visible days based on screen width
+  const visibleDaysMobile = Math.max(
+    2,
+    Math.floor((windowWidth - NAV_BUTTONS_WIDTH - CONTAINER_PADDING - NAV_GAP - TIME_CELL_WIDTH_PX) / CELL_WIDTH_PX)
+  );
+
   // Calculate visible range
-  const maxDayOffset = Math.max(0, days.length - VISIBLE_DAYS_MOBILE);
+  const maxDayOffset = Math.max(0, days.length - visibleDaysMobile);
   const maxTimeOffset = Math.max(0, HOURS.length - VISIBLE_HOURS_MOBILE);
 
   const visibleDayIndices = isMobile
-    ? Array.from({ length: Math.min(VISIBLE_DAYS_MOBILE, days.length) }, (_, i) => i + dayOffset)
+    ? Array.from({ length: Math.min(visibleDaysMobile, days.length) }, (_, i) => i + dayOffset)
     : Array.from({ length: days.length }, (_, i) => i);
   const visibleHourIndices = isMobile
     ? HOURS.slice(timeOffset, timeOffset + VISIBLE_HOURS_MOBILE)
