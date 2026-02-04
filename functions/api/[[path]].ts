@@ -68,12 +68,14 @@ function buildDiscordEmbed({
   url,
   footer,
   fields,
+  imageUrl,
 }: {
   title: string;
   description?: string;
   url?: string;
   footer?: string;
   fields?: { name: string; value: string; inline?: boolean }[];
+  imageUrl?: string;
 }) {
   return {
     title,
@@ -82,7 +84,34 @@ function buildDiscordEmbed({
     color: 0x667eea,
     fields,
     footer: footer ? { text: footer } : undefined,
+    image: imageUrl ? { url: imageUrl } : undefined,
   };
+}
+
+function formatHumanRange(start: Date, end: Date, timezone: string, isAllDay: boolean): string {
+  if (isAllDay) {
+    return new Intl.DateTimeFormat('ja-JP', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      weekday: 'short',
+    }).format(start);
+  }
+  const fmtDate = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+  }).format(start);
+  const fmtTime = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${fmtDate} ${fmtTime.format(start)} - ${fmtTime.format(end)} (${timezone})`;
 }
 
 // Create event
@@ -222,11 +251,13 @@ app.post('/events/:id/responses', async (c) => {
   }
 
   const webhookResult = await c.env.DB.prepare(
-    'SELECT webhook_url, title, view_token FROM events WHERE id = ?'
+    'SELECT webhook_url, title, view_token, mode, timezone FROM events WHERE id = ?'
   ).bind(eventId).first<any>();
 
   if (webhookResult?.webhook_url) {
-    const viewUrl = `${new URL(c.req.url).origin}/v/${eventId}?token=${webhookResult.view_token}`;
+    const origin = new URL(c.req.url).origin;
+    const viewUrl = `${origin}/v/${eventId}?token=${webhookResult.view_token}`;
+    const ogImage = `${origin}/api/events/${eventId}/og`;
     const isDiscord = isDiscordWebhook(webhookResult.webhook_url);
     const payload = isDiscord
       ? {
@@ -242,12 +273,8 @@ app.post('/events/:id/responses', async (c) => {
                   value: body.participantName,
                   inline: true,
                 },
-                {
-                  name: '回答スロット数',
-                  value: String(body.slots.length),
-                  inline: true,
-                },
               ],
+              imageUrl: ogImage,
             }),
           ],
         }
@@ -526,6 +553,7 @@ app.post('/events/:id/confirm', async (c) => {
     const confirmed = body.confirmedSlots[0];
     let timeText = '';
     let googleCalUrl = '';
+    let humanRange = '';
     if (confirmed !== undefined) {
       const slot = await c.env.DB.prepare(
         'SELECT start_time, end_time FROM event_slots WHERE event_id = ? ORDER BY start_time LIMIT 1 OFFSET ?'
@@ -536,6 +564,7 @@ app.post('/events/:id/confirm', async (c) => {
         const start = formatForGoogleCalendar(startDate, isAllDay);
         const end = formatForGoogleCalendar(endDate, isAllDay);
         timeText = `${start} - ${end}`;
+        humanRange = formatHumanRange(startDate, endDate, webhookResult.timezone || 'UTC', isAllDay);
         googleCalUrl = buildGoogleCalendarLink({
           title: webhookResult.title || 'イベント',
           description: webhookResult.description,
@@ -546,7 +575,9 @@ app.post('/events/:id/confirm', async (c) => {
         });
       }
     }
-    const viewUrl = `${new URL(c.req.url).origin}/v/${eventId}?token=${webhookResult.view_token}`;
+    const origin = new URL(c.req.url).origin;
+    const viewUrl = `${origin}/v/${eventId}?token=${webhookResult.view_token}`;
+    const ogImage = `${origin}/api/events/${eventId}/og`;
     const isDiscord = isDiscordWebhook(webhookResult.webhook_url);
     const payload = isDiscord
       ? {
@@ -556,13 +587,13 @@ app.post('/events/:id/confirm', async (c) => {
               title: webhookResult.title || 'イベント',
               description: webhookResult.description || '',
               url: viewUrl,
-              footer: timeText ? `UTC: ${timeText}` : undefined,
+              footer: humanRange || timeText ? humanRange || timeText : undefined,
               fields: [
-                ...(timeText
+                ...(humanRange
                   ? [
                       {
                         name: '日時',
-                        value: timeText,
+                        value: humanRange,
                         inline: false,
                       },
                     ]
@@ -577,11 +608,12 @@ app.post('/events/:id/confirm', async (c) => {
                     ]
                   : []),
               ],
+              imageUrl: ogImage,
             }),
           ],
         }
       : {
-          text: `イベントが確定しました: ${webhookResult.title}${timeText ? ` (${timeText})` : ''}`,
+          text: `イベントが確定しました: ${webhookResult.title}${humanRange ? ` (${humanRange})` : ''}`,
           embeds: [
             {
               title: webhookResult.title,
