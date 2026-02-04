@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button, Layer } from '@carbon/react';
 import type { Availability } from '../types';
 import { useIsMobile } from '../hooks/useMediaQuery';
-import { CALENDAR_GRID, STATUS_DISPLAY } from '../constants/layout';
+import { CALENDAR_GRID,  } from '../constants/layout';
 
 interface CalendarGridProps {
   selectedDates: Set<string>;
@@ -521,46 +521,6 @@ export default function CalendarGrid({
           WebkitOverflowScrolling: isMobile ? undefined : 'touch',
         }}
       >
-      <div
-        style={{
-          display: 'flex',
-          gap: isMobile ? '0.5rem' : '0.75rem',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          padding: isMobile ? '0.5rem' : '0.75rem',
-          borderRadius: 0,
-          background: palette.layerAlt,
-          border: `1px dashed ${palette.border}`,
-        }}
-      >
-        <div style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: palette.text }}>
-          {isMobile ? 'ドラッグで塗る' : 'Excelドラッグ + ペイント塗りのハイブリッド'}
-        </div>
-        {!isMobile && (
-          <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>
-            Shiftで範囲 / 曜日ヘッダーで列まとめて
-          </div>
-        )}
-        <div
-          style={{
-            marginLeft: 'auto',
-            fontSize: '0.85rem',
-            color: palette.text,
-            background: palette.layer,
-            padding: '0.35rem 0.6rem',
-            borderRadius: 0,
-            border: `1px solid ${palette.border}`,
-            boxShadow: 'none',
-            visibility: lastClickedKey ? 'visible' : 'hidden',
-            width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-            fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {isMobile ? (mode === 'select' ? selectedDates.size : availability.size) : `${mode === 'select' ? '選択日数' : '設定日数'}: ${mode === 'select' ? selectedDates.size : availability.size} / 起点 ${lastClickedKey || '----/--/--'}`}
-        </div>
-      </div>
 
       {mode === 'availability' && (
         <div style={{ margin: isMobile ? '0.75rem 0 0.5rem' : '1rem 0 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
