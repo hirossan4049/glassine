@@ -13,6 +13,7 @@ import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { Event, Availability } from '../types';
 import { addRespondedEvent } from '../utils/history';
+import { FORM } from '../constants/layout';
 
 interface ParticipantResponseProps {
   eventId: string;
@@ -264,7 +265,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          style={{ maxWidth: '400px' }}
+          style={{ maxWidth: FORM.nameInputMaxWidth }}
         />
 
         <div>

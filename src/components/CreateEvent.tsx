@@ -13,6 +13,7 @@ import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { TimeSlot, EventMode } from '../types';
 import { addCreatedEvent } from '../utils/history';
+import { FORM } from '../constants/layout';
 
 interface CreateEventProps {
   onBack: () => void;
@@ -169,7 +170,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
                 setMode('dateonly');
                 setSelectedSlots(new Set());
               }}
-              style={{ flex: '1', minWidth: '150px' }}
+              style={{ flex: '1', minWidth: FORM.tileMinWidth }}
             >
               <p className="cds--type-body-compact-01" style={{ fontWeight: 600 }}>日程のみ</p>
               <p className="cds--type-helper-text-01">日付だけを選択</p>
@@ -178,7 +179,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
               id="mode-datetime"
               selected={mode === 'datetime'}
               onClick={() => setMode('datetime')}
-              style={{ flex: '1', minWidth: '150px' }}
+              style={{ flex: '1', minWidth: FORM.tileMinWidth }}
             >
               <p className="cds--type-body-compact-01" style={{ fontWeight: 600 }}>時間込み</p>
               <p className="cds--type-helper-text-01">日付と時間を選択</p>

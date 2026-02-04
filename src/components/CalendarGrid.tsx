@@ -1,21 +1,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button, Layer } from '@carbon/react';
 import type { Availability } from '../types';
-
-// Hook to detect mobile viewport
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-  );
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [breakpoint]);
-
-  return isMobile;
-}
+import { useIsMobile } from '../hooks/useMediaQuery';
+import { CALENDAR_GRID, STATUS_DISPLAY } from '../constants/layout';
 
 interface CalendarGridProps {
   selectedDates: Set<string>;
@@ -359,8 +346,8 @@ export default function CalendarGrid({
       <div
         style={{
           flex: 1,
-          minWidth: isMobile ? '100%' : '280px',
-          maxWidth: isMobile ? '100%' : undefined,
+          minWidth: isMobile ? CALENDAR_GRID.monthMinWidth.mobile : CALENDAR_GRID.monthMinWidth.desktop,
+          maxWidth: isMobile ? CALENDAR_GRID.monthMinWidth.mobile : undefined,
           background: palette.layerAlt,
           borderRadius: 0,
           padding: isMobile ? '0.5rem' : '0.75rem',
@@ -563,7 +550,7 @@ export default function CalendarGrid({
             border: `1px solid ${palette.border}`,
             boxShadow: 'none',
             visibility: lastClickedKey ? 'visible' : 'hidden',
-            width: isMobile ? 'auto' : '220px',
+            width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop,
             flexShrink: 0,
             whiteSpace: 'nowrap',
             fontVariantNumeric: 'tabular-nums',

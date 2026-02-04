@@ -1,21 +1,8 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import { Button, Layer } from '@carbon/react';
 import type { TimeSlot, Availability } from '../types';
-
-// Hook to detect mobile viewport
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-  );
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [breakpoint]);
-
-  return isMobile;
-}
+import { useIsMobile } from '../hooks/useMediaQuery';
+import { TIME_GRID, STATUS_DISPLAY } from '../constants/layout';
 
 interface TimeGridProps {
   slots: TimeSlot[];
@@ -129,8 +116,8 @@ export default function TimeGrid({
   const pendingCurrentKeyRef = useRef<string | null>(null);
 
   // Responsive cell width - scales with viewport on mobile
-  const cellWidth = isMobile ? 'minmax(48px, 1fr)' : '72px';
-  const timeCellWidth = isMobile ? '56px' : '72px';
+  const cellWidth = isMobile ? TIME_GRID.cellWidth.mobile : TIME_GRID.cellWidth.desktop;
+  const timeCellWidth = isMobile ? TIME_GRID.timeCellWidth.mobile : TIME_GRID.timeCellWidth.desktop;
 
   const getDayKeys = useCallback((dayIndex: number) => {
     const keys: string[] = [];
@@ -388,7 +375,7 @@ export default function TimeGrid({
         {!isMobile && (
           <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
         )}
-        <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? 'auto' : '200px', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
           {isMobile ? (mode === 'select' ? selectedSlots.size : availability.size) : `${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
         </div>
       </div>

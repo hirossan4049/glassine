@@ -20,21 +20,8 @@ import { ArrowLeft, Checkmark } from '@carbon/react/icons';
 import type { Event, SlotAggregation, EventSlot, EventMode, ParticipantResponse } from '../types';
 import ResponseMatrix from './ResponseMatrix';
 import ResponseEditor from './ResponseEditor';
-
-// Hook to detect mobile viewport
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-  );
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [breakpoint]);
-
-  return isMobile;
-}
+import { useIsMobile } from '../hooks/useMediaQuery';
+import { FORM } from '../constants/layout';
 
 function formatSlotDisplay(slot: EventSlot, mode: EventMode): string {
   const date = new Date(slot.start);
@@ -337,7 +324,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                                     disabled={confirming || rowData.isConfirmed}
                                     hasIconOnly={isMobile && !rowData.isConfirmed}
                                     iconDescription={isMobile ? '確定' : undefined}
-                                    style={isMobile ? { minWidth: '36px', padding: '0.5rem' } : undefined}
+                                    style={isMobile ? { minWidth: FORM.buttonMinWidth.mobile, padding: '0.5rem' } : undefined}
                                   >
                                     {isMobile ? (rowData.isConfirmed ? '✓' : '') : (rowData.isConfirmed ? '確定済み' : '確定')}
                                   </Button>

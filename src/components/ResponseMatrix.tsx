@@ -1,22 +1,8 @@
-import { useState, useEffect } from 'react';
 import { Button, Tile } from '@carbon/react';
 import { Edit, TrashCan } from '@carbon/react/icons';
 import type { Event, EventSlot, ParticipantResponse, Availability, EventMode } from '../types';
-
-// Hook to detect mobile viewport
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
-  );
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [breakpoint]);
-
-  return isMobile;
-}
+import { useIsMobile } from '../hooks/useMediaQuery';
+import { RESPONSE_MATRIX } from '../constants/layout';
 
 interface ResponseMatrixProps {
   event: Event;
@@ -101,9 +87,11 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
     return { available, maybe, unavailable };
   });
 
-  const stickyWidth = isMobile ? '80px' : '120px';
+  const stickyWidth = isMobile ? RESPONSE_MATRIX.stickyWidth.mobile : RESPONSE_MATRIX.stickyWidth.desktop;
   const cellPadding = isMobile ? '0.35rem' : '0.5rem';
-  const cellMinWidth = isMobile ? (isDateOnly ? '60px' : '40px') : (isDateOnly ? '80px' : '50px');
+  const cellMinWidth = isMobile
+    ? (isDateOnly ? RESPONSE_MATRIX.cellMinWidth.dateOnly.mobile : RESPONSE_MATRIX.cellMinWidth.datetime.mobile)
+    : (isDateOnly ? RESPONSE_MATRIX.cellMinWidth.dateOnly.desktop : RESPONSE_MATRIX.cellMinWidth.datetime.desktop);
 
   return (
     <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>

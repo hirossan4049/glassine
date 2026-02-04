@@ -107,3 +107,24 @@ $breakpoint-md: 768px;
   min-height: 44px;
   min-width: 44px;
 }
+
+// ======================
+// CSS Custom Properties for Width
+// ======================
+:root {
+  --glassine-time-cell-width: 72px;
+  --glassine-time-cell-width-header: 72px;
+  --glassine-calendar-month-min-width: 280px;
+  --glassine-matrix-sticky-width: 120px;
+  --glassine-status-width: 200px;
+}
+
+@media (max-width: $breakpoint-md) {
+  :root {
+    --glassine-time-cell-width: minmax(48px, 1fr);
+    --glassine-time-cell-width-header: 56px;
+    --glassine-calendar-month-min-width: 100%;
+    --glassine-matrix-sticky-width: 80px;
+    --glassine-status-width: auto;
+  }
+}
