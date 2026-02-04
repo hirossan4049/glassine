@@ -91,6 +91,10 @@ function getKeysInRectSet(anchorKey: string, currentKey: string, daysCount: numb
   return new Set(getKeysInRect(anchorKey, currentKey, daysCount));
 }
 
+// Navigation constants for mobile
+const VISIBLE_DAYS_MOBILE = 3;
+const VISIBLE_HOURS_MOBILE = 6;
+
 export default function TimeGrid({
   slots: _slots,
   selectedSlots,
@@ -106,9 +110,44 @@ export default function TimeGrid({
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ dayIndex: number; hour: number; minute: number } | null>(null);
 
-  // Always show all content (modals handle mobile fullscreen)
-  const visibleDayIndices = Array.from({ length: days.length }, (_, i) => i);
-  const visibleHourIndices = HOURS;
+  // Navigation state for mobile
+  const [dayOffset, setDayOffset] = useState(0);
+  const [timeOffset, setTimeOffset] = useState(0);
+
+  // Calculate visible range
+  const maxDayOffset = Math.max(0, days.length - VISIBLE_DAYS_MOBILE);
+  const maxTimeOffset = Math.max(0, HOURS.length - VISIBLE_HOURS_MOBILE);
+
+  const visibleDayIndices = isMobile
+    ? Array.from({ length: Math.min(VISIBLE_DAYS_MOBILE, days.length) }, (_, i) => i + dayOffset)
+    : Array.from({ length: days.length }, (_, i) => i);
+  const visibleHourIndices = isMobile
+    ? HOURS.slice(timeOffset, timeOffset + VISIBLE_HOURS_MOBILE)
+    : HOURS;
+
+  const canNavigate = {
+    up: timeOffset > 0,
+    down: timeOffset < maxTimeOffset,
+    left: dayOffset > 0,
+    right: dayOffset < maxDayOffset,
+  };
+
+  const handleNavigate = (direction: 'up' | 'down' | 'left' | 'right') => {
+    switch (direction) {
+      case 'up':
+        setTimeOffset((prev) => Math.max(0, prev - 1));
+        break;
+      case 'down':
+        setTimeOffset((prev) => Math.min(maxTimeOffset, prev + 1));
+        break;
+      case 'left':
+        setDayOffset((prev) => Math.max(0, prev - 1));
+        break;
+      case 'right':
+        setDayOffset((prev) => Math.min(maxDayOffset, prev + 1));
+        break;
+    }
+  };
 
   // Drag state as ref (no re-render during drag, only preview)
   const dragRef = useRef<DragState | null>(null);
@@ -405,6 +444,35 @@ export default function TimeGrid({
         </div>
       )}
 
+      {/* Navigation: Up button (mobile only) */}
+      {isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            onClick={() => handleNavigate('up')}
+            disabled={!canNavigate.up}
+            style={{ minWidth: '44px', padding: '0.5rem' }}
+          >
+            ↑
+          </Button>
+        </div>
+      )}
+
+      {/* Left/Right buttons + Grid container (mobile only wraps with buttons) */}
+      <div style={{ display: isMobile ? 'flex' : 'block', alignItems: 'center', gap: '4px' }}>
+        {isMobile && (
+          <Button
+            kind="tertiary"
+            size="sm"
+            onClick={() => handleNavigate('left')}
+            disabled={!canNavigate.left}
+            style={{ minWidth: '44px', padding: '0.5rem', flexShrink: 0 }}
+          >
+            ←
+          </Button>
+        )}
+
       <div
         ref={gridRef}
         style={{
@@ -524,6 +592,34 @@ export default function TimeGrid({
             })
           )}
         </div>
+
+        {isMobile && (
+          <Button
+            kind="tertiary"
+            size="sm"
+            onClick={() => handleNavigate('right')}
+            disabled={!canNavigate.right}
+            style={{ minWidth: '44px', padding: '0.5rem', flexShrink: 0 }}
+          >
+            →
+          </Button>
+        )}
+      </div>
+
+      {/* Navigation: Down button (mobile only) */}
+      {isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            onClick={() => handleNavigate('down')}
+            disabled={!canNavigate.down}
+            style={{ minWidth: '44px', padding: '0.5rem' }}
+          >
+            ↓
+          </Button>
+        </div>
+      )}
       </div>
     </Layer>
   );
