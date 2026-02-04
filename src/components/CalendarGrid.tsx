@@ -517,6 +517,8 @@ export default function CalendarGrid({
           padding: '1rem',
           border: `1px solid ${palette.border}`,
           boxShadow: 'none',
+          overflowX: 'scroll',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
       <div

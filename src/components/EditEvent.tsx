@@ -291,51 +291,53 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
             <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '1rem' }}>
               おすすめ候補{event.mode === 'dateonly' ? '日程' : '日時'}
             </h2>
-            <DataTable rows={rows} headers={headers}>
-              {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
-                <Table {...getTableProps()}>
-                  <TableHead>
-                    <TableRow>
-                      {tableHeaders.map((header) => (
-                        <TableHeader {...getHeaderProps({ header })} key={header.key}>
-                          {header.header}
-                        </TableHeader>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {tableRows.map((row) => {
-                      const rowData = rows.find(r => r.id === row.id);
-                      return (
-                        <TableRow {...getRowProps({ row })} key={row.id}>
-                          {row.cells.map((cell) => {
-                            if (cell.info.header === 'action' && rowData) {
-                              return (
-                                <TableCell key={cell.id}>
-                                  <Button
-                                    kind={rowData.isConfirmed ? 'ghost' : 'primary'}
-                                    size="sm"
-                                    renderIcon={rowData.isConfirmed ? Checkmark : undefined}
-                                    onClick={() => handleConfirm([rowData.index])}
-                                    disabled={confirming || rowData.isConfirmed}
-                                    hasIconOnly={isMobile && !rowData.isConfirmed}
-                                    iconDescription={isMobile ? '確定' : undefined}
-                                    style={isMobile ? { minWidth: FORM.buttonMinWidth.mobile, padding: '0.5rem' } : undefined}
-                                  >
-                                    {isMobile ? (rowData.isConfirmed ? '✓' : '') : (rowData.isConfirmed ? '確定済み' : '確定')}
-                                  </Button>
-                                </TableCell>
-                              );
-                            }
-                            return <TableCell key={cell.id}>{cell.value}</TableCell>;
-                          })}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </DataTable>
+            <div style={{ overflowX: 'scroll', WebkitOverflowScrolling: 'touch' }}>
+              <DataTable rows={rows} headers={headers}>
+                {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
+                  <Table {...getTableProps()}>
+                    <TableHead>
+                      <TableRow>
+                        {tableHeaders.map((header) => (
+                          <TableHeader {...getHeaderProps({ header })} key={header.key}>
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {tableRows.map((row) => {
+                        const rowData = rows.find(r => r.id === row.id);
+                        return (
+                          <TableRow {...getRowProps({ row })} key={row.id}>
+                            {row.cells.map((cell) => {
+                              if (cell.info.header === 'action' && rowData) {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <Button
+                                      kind={rowData.isConfirmed ? 'ghost' : 'primary'}
+                                      size="sm"
+                                      renderIcon={rowData.isConfirmed ? Checkmark : undefined}
+                                      onClick={() => handleConfirm([rowData.index])}
+                                      disabled={confirming || rowData.isConfirmed}
+                                      hasIconOnly={isMobile && !rowData.isConfirmed}
+                                      iconDescription={isMobile ? '確定' : undefined}
+                                      style={isMobile ? { minWidth: FORM.buttonMinWidth.mobile, padding: '0.5rem' } : undefined}
+                                    >
+                                      {isMobile ? (rowData.isConfirmed ? '✓' : '') : (rowData.isConfirmed ? '確定済み' : '確定')}
+                                    </Button>
+                                  </TableCell>
+                                );
+                              }
+                              return <TableCell key={cell.id}>{cell.value}</TableCell>;
+                            })}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </DataTable>
+            </div>
           </div>
         )}
 

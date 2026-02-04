@@ -358,7 +358,7 @@ export default function TimeGrid({
     <Layer level={1}>
       <div
         style={{
-          overflowX: 'auto',
+          overflowX: 'scroll',
           maxWidth: '100%',
           userSelect: 'none',
           background: palette.layer,
