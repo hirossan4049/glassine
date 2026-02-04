@@ -1,11 +1,41 @@
 import { chromium } from '@playwright/test';
 import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawn } from 'node:child_process';
+import ffmpegPath from 'ffmpeg-static';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:4173';
 const OUTPUT_DIR = join(process.cwd(), 'docs', 'assets');
 const OUTPUT_WEBM = join(OUTPUT_DIR, 'glassine-demo.webm');
+const OUTPUT_GIF = join(OUTPUT_DIR, 'glassine-demo.gif');
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const run = (cmd, args) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: 'inherit' });
+    child.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`${cmd} exited with code ${code}`));
+    });
+  });
+
+async function convertWebmToGif(inputPath, outputPath) {
+  if (!ffmpegPath) throw new Error('ffmpeg binary not found (ffmpeg-static not installed?)');
+  const palettePath = join(OUTPUT_DIR, 'palette.png');
+  const filter = 'fps=12,scale=1920:-1:flags=lanczos';
+
+  await run(ffmpegPath, ['-y', '-i', inputPath, '-vf', `${filter},palettegen`, palettePath]);
+  await run(ffmpegPath, [
+    '-y',
+    '-i',
+    inputPath,
+    '-i',
+    palettePath,
+    '-lavfi',
+    `${filter} [x]; [x][1:v] paletteuse=dither=bayer`,
+    outputPath,
+  ]);
+}
 
 async function record() {
   if (!existsSync(OUTPUT_DIR)) {
@@ -15,9 +45,10 @@ async function record() {
   const browser = await chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
   const videoDir = join(process.cwd(), 'tmp', 'videos');
   const context = await browser.newContext({
+    viewport: { width: 1920, height: 1080 },
     recordVideo: {
       dir: videoDir,
-      size: { width: 1280, height: 720 },
+      size: { width: 1920, height: 1080 },
     },
   });
   const page = await context.newPage();
@@ -85,6 +116,9 @@ async function record() {
 
   copyFileSync(videoPath, OUTPUT_WEBM);
   console.log(`Recording saved: ${OUTPUT_WEBM}`);
+
+  await convertWebmToGif(OUTPUT_WEBM, OUTPUT_GIF);
+  console.log(`GIF saved: ${OUTPUT_GIF}`);
 }
 
 record().catch((err) => {
