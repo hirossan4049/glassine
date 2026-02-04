@@ -379,14 +379,12 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
           <div>
             <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '0.5rem' }}>確定した予定</h2>
             <Stack gap={2}>
-              {confirmedSlot && (
-                <div>
-                  <p className="cds--type-body-01" style={{ marginBottom: '0.25rem' }}>
-                    {formatSlotDisplay(confirmedSlot, event.mode)}
-                  </p>
-                  <Tag type="green" size="sm">確定済み</Tag>
-                </div>
-              )}
+              <div>
+                <p className="cds--type-body-01" style={{ marginBottom: '0.25rem' }}>
+                  {confirmedSlot ? formatSlotDisplay(confirmedSlot, event.mode) : ''}
+                </p>
+                <Tag type="green" size="sm">確定済み</Tag>
+              </div>
               <Button
                 kind="primary"
                 size="md"
