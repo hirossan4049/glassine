@@ -28,3 +28,17 @@ export function useWindowWidth() {
 
   return width;
 }
+
+export function useWindowHeight() {
+  const [height, setHeight] = useState(() =>
+    typeof window !== 'undefined' ? window.innerHeight : 667
+  );
+
+  useEffect(() => {
+    const handleResize = () => setHeight(window.innerHeight);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return height;
+}
