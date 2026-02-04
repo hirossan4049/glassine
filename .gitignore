@@ -19,9 +19,13 @@ dist/
 # OS
 .DS_Store
 
+# Tests
+test-results/
+
 # Claude Code
 .claude/
 
 # Misc
 tsc
 glassine@*
+tmp/
