@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/cloudflare-pages';
 import { Resvg } from '@cf-wasm/resvg';
-import type { Env, Event, CreateEventRequest, CreateResponseRequest, ConfirmEventRequest, SlotAggregation } from '../../src/types';
+import type { Env, Event, CreateEventRequest, CreateResponseRequest, ConfirmEventRequest, SlotAggregation, Availability, ParticipantResponse, ResponseSlot } from '../../src/types';
 
 const app = new Hono<{ Bindings: Env }>().basePath('/api');
 
@@ -129,11 +129,13 @@ app.post('/events', async (c) => {
     'INSERT INTO events (id, title, description, edit_token, view_token, created_at, webhook_url, timezone, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(eventId, title, description || null, editToken, viewToken, createdAt, webhookUrl || null, timezone, mode).run();
 
-  // Insert slots
-  for (const slot of slots) {
-    await c.env.DB.prepare(
-      'INSERT INTO event_slots (event_id, start_time, end_time) VALUES (?, ?, ?)'
-    ).bind(eventId, slot.start, slot.end).run();
+  // Insert slots using batch (optimized from loop INSERT)
+  if (slots.length > 0) {
+    const slotStatements = slots.map(slot =>
+      c.env.DB.prepare('INSERT INTO event_slots (event_id, start_time, end_time) VALUES (?, ?, ?)')
+        .bind(eventId, slot.start, slot.end)
+    );
+    await c.env.DB.batch(slotStatements);
   }
 
   return c.json({
@@ -175,29 +177,40 @@ app.get('/events/:id', async (c) => {
     'SELECT * FROM event_slots WHERE event_id = ? ORDER BY start_time'
   ).bind(eventId).all<any>();
 
-  // Get responses
-  const responsesResult = await c.env.DB.prepare(
-    'SELECT * FROM responses WHERE event_id = ? ORDER BY created_at DESC'
+  // Get responses with slots in a single JOIN query (optimized from N+1)
+  const responsesWithSlots = await c.env.DB.prepare(
+    `SELECT r.id, r.event_id, r.participant_name, r.created_at,
+            rs.slot_start, rs.slot_end, rs.availability
+     FROM responses r
+     LEFT JOIN response_slots rs ON r.id = rs.response_id
+     WHERE r.event_id = ?
+     ORDER BY r.created_at DESC, rs.slot_start`
   ).bind(eventId).all<any>();
 
-  const responses = [];
-  for (const response of responsesResult.results || []) {
-    const responseSlots = await c.env.DB.prepare(
-      'SELECT * FROM response_slots WHERE response_id = ?'
-    ).bind(response.id).all<any>();
+  // Group results by response
+  const responsesMap = new Map<number, ParticipantResponse>();
 
-    responses.push({
-      id: response.id,
-      eventId: response.event_id,
-      participantName: response.participant_name,
-      createdAt: response.created_at,
-      slots: (responseSlots.results || []).map((s: any) => ({
-        start: s.slot_start,
-        end: s.slot_end,
-        availability: s.availability,
-      })),
-    });
+  for (const row of responsesWithSlots.results || []) {
+    if (!responsesMap.has(row.id)) {
+      responsesMap.set(row.id, {
+        id: row.id,
+        eventId: row.event_id,
+        participantName: row.participant_name,
+        createdAt: row.created_at,
+        slots: [],
+      });
+    }
+    if (row.slot_start !== null) {
+      const slot: ResponseSlot = {
+        start: row.slot_start,
+        end: row.slot_end,
+        availability: row.availability as Availability,
+      };
+      responsesMap.get(row.id)!.slots.push(slot);
+    }
   }
+
+  const responses = Array.from(responsesMap.values());
 
   const event: Event = {
     id: eventResult.id,
@@ -243,11 +256,13 @@ app.post('/events/:id/responses', async (c) => {
 
   const responseId = responseResult.id;
 
-  // Insert response slots
-  for (const slot of body.slots) {
-    await c.env.DB.prepare(
-      'INSERT INTO response_slots (response_id, slot_start, slot_end, availability) VALUES (?, ?, ?, ?)'
-    ).bind(responseId, slot.start, slot.end, slot.availability).run();
+  // Insert response slots using batch (optimized from loop INSERT)
+  if (body.slots.length > 0) {
+    const slotStatements = body.slots.map(slot =>
+      c.env.DB.prepare('INSERT INTO response_slots (response_id, slot_start, slot_end, availability) VALUES (?, ?, ?, ?)')
+        .bind(responseId, slot.start, slot.end, slot.availability)
+    );
+    await c.env.DB.batch(slotStatements);
   }
 
   const webhookResult = await c.env.DB.prepare(
@@ -312,46 +327,28 @@ app.get('/events/:id/aggregation', async (c) => {
     return c.json({ error: 'Invalid token' }, 403);
   }
 
-  // Get all slots and responses
-  const slotsResult = await c.env.DB.prepare(
-    'SELECT * FROM event_slots WHERE event_id = ? ORDER BY start_time'
+  // Get aggregated counts in a single query (optimized from O(slots × responses) queries)
+  const aggregationResult = await c.env.DB.prepare(
+    `SELECT es.id, es.start_time, es.end_time,
+            COALESCE(SUM(CASE WHEN rs.availability = 'available' THEN 1 ELSE 0 END), 0) as available_count,
+            COALESCE(SUM(CASE WHEN rs.availability = 'maybe' THEN 1 ELSE 0 END), 0) as maybe_count,
+            COALESCE(SUM(CASE WHEN rs.availability = 'unavailable' THEN 1 ELSE 0 END), 0) as unavailable_count
+     FROM event_slots es
+     LEFT JOIN response_slots rs ON es.start_time = rs.slot_start AND es.end_time = rs.slot_end
+     LEFT JOIN responses r ON rs.response_id = r.id AND r.event_id = es.event_id
+     WHERE es.event_id = ?
+     GROUP BY es.id, es.start_time, es.end_time
+     ORDER BY es.start_time`
   ).bind(eventId).all<any>();
 
-  const responsesResult = await c.env.DB.prepare(
-    'SELECT id FROM responses WHERE event_id = ?'
-  ).bind(eventId).all<any>();
-
-  const aggregation: SlotAggregation[] = [];
-
-  for (let i = 0; i < (slotsResult.results || []).length; i++) {
-    const slot = slotsResult.results![i];
-    let availableCount = 0;
-    let maybeCount = 0;
-    let unavailableCount = 0;
-
-    for (const response of responsesResult.results || []) {
-      const responseSlot = await c.env.DB.prepare(
-        'SELECT availability FROM response_slots WHERE response_id = ? AND slot_start = ? AND slot_end = ?'
-      ).bind(response.id, slot.start_time, slot.end_time).first<any>();
-
-      if (responseSlot) {
-        if (responseSlot.availability === 'available') availableCount++;
-        else if (responseSlot.availability === 'maybe') maybeCount++;
-        else unavailableCount++;
-      }
-    }
-
-    const score = availableCount * 2 + maybeCount * 1;
-
-    aggregation.push({
-      slot: { id: slot.id, start: slot.start_time, end: slot.end_time },
-      index: i,
-      availableCount,
-      maybeCount,
-      unavailableCount,
-      score,
-    });
-  }
+  const aggregation: SlotAggregation[] = (aggregationResult.results || []).map((row: any, index: number) => ({
+    slot: { id: row.id, start: row.start_time, end: row.end_time },
+    index,
+    availableCount: row.available_count,
+    maybeCount: row.maybe_count,
+    unavailableCount: row.unavailable_count,
+    score: row.available_count * 2 + row.maybe_count * 1,
+  }));
 
   // Sort by score descending
   aggregation.sort((a, b) => b.score - a.score);
@@ -379,15 +376,17 @@ app.put('/events/:id/responses/:responseId', async (c) => {
     'UPDATE responses SET participant_name = ? WHERE id = ?'
   ).bind(body.participantName, responseId).run();
 
-  // Delete old slots and insert new ones
+  // Delete old slots and insert new ones using batch (optimized from loop INSERT)
   await c.env.DB.prepare(
     'DELETE FROM response_slots WHERE response_id = ?'
   ).bind(responseId).run();
 
-  for (const slot of body.slots) {
-    await c.env.DB.prepare(
-      'INSERT INTO response_slots (response_id, slot_start, slot_end, availability) VALUES (?, ?, ?, ?)'
-    ).bind(responseId, slot.start, slot.end, slot.availability).run();
+  if (body.slots.length > 0) {
+    const slotStatements = body.slots.map(slot =>
+      c.env.DB.prepare('INSERT INTO response_slots (response_id, slot_start, slot_end, availability) VALUES (?, ?, ?, ?)')
+        .bind(responseId, slot.start, slot.end, slot.availability)
+    );
+    await c.env.DB.batch(slotStatements);
   }
 
   return c.json({ success: true });
