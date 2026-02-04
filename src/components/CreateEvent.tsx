@@ -11,6 +11,7 @@ import {
 import { ArrowLeft, Calendar, Time } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
+import FullscreenModal from './FullscreenModal';
 import type { TimeSlot, EventMode } from '../types';
 import { addCreatedEvent } from '../utils/history';
 import { FORM } from '../constants/layout';
@@ -280,83 +281,37 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       </Stack>
 
       {/* Calendar Modal for Mobile */}
-      {showCalendarModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            background: 'var(--cds-layer-01)',
-            overflow: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
+      <FullscreenModal
+        title="候補日を選択"
+        isOpen={showCalendarModal}
+        onClose={() => setShowCalendarModal(false)}
+        footerText={`完了 (${selectedDates.size}日選択中)`}
+      >
+        <CalendarGrid
+          selectedDates={selectedDates}
+          onDatesChange={(dates) => {
+            setSelectedDates(dates);
+            if (mode === 'datetime') {
+              setSelectedSlots(new Set());
+            }
           }}
-        >
-          <div style={{ padding: '1rem', borderBottom: '1px solid var(--cds-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="cds--type-productive-heading-03">候補日を選択</h2>
-            <Button kind="ghost" size="sm" onClick={() => setShowCalendarModal(false)}>
-              ✕
-            </Button>
-          </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
-            <CalendarGrid
-              selectedDates={selectedDates}
-              onDatesChange={(dates) => {
-                setSelectedDates(dates);
-                if (mode === 'datetime') {
-                  setSelectedSlots(new Set());
-                }
-              }}
-            />
-          </div>
-          <div style={{ padding: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }}>
-            <Button kind="primary" size="lg" onClick={() => setShowCalendarModal(false)} style={{ width: '100%' }}>
-              完了 ({selectedDates.size}日選択中)
-            </Button>
-          </div>
-        </div>
-      )}
+        />
+      </FullscreenModal>
 
       {/* Time Grid Modal for Mobile */}
-      {showTimeModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            background: 'var(--cds-layer-01)',
-            overflow: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div style={{ padding: '1rem', borderBottom: '1px solid var(--cds-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="cds--type-productive-heading-03">候補時間を選択</h2>
-            <Button kind="ghost" size="sm" onClick={() => setShowTimeModal(false)}>
-              ✕
-            </Button>
-          </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
-            <TimeGrid
-              slots={[]}
-              selectedSlots={selectedSlots}
-              onSlotsChange={setSelectedSlots}
-              days={dayLabels}
-            />
-          </div>
-          <div style={{ padding: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }}>
-            <Button kind="primary" size="lg" onClick={() => setShowTimeModal(false)} style={{ width: '100%' }}>
-              完了 ({selectedSlots.size}スロット選択中)
-            </Button>
-          </div>
-        </div>
-      )}
+      <FullscreenModal
+        title="候補時間を選択"
+        isOpen={showTimeModal}
+        onClose={() => setShowTimeModal(false)}
+        footerText={`完了 (${selectedSlots.size}スロット選択中)`}
+      >
+        <TimeGrid
+          slots={[]}
+          selectedSlots={selectedSlots}
+          onSlotsChange={setSelectedSlots}
+          days={dayLabels}
+        />
+      </FullscreenModal>
     </div>
   );
 }

@@ -13,9 +13,6 @@ interface TimeGridProps {
   onAvailabilityChange?: (availability: Map<string, Availability>) => void;
   days?: string[];
   startDate?: Date;
-  // Mobile navigation - number of visible items
-  visibleDays?: number;
-  visibleHours?: number;
 }
 
 // Drag state for preview rendering (no state updates during drag)
@@ -103,58 +100,15 @@ export default function TimeGrid({
   onAvailabilityChange,
   days = DEFAULT_DAYS,
   startDate,
-  visibleDays = 3,
-  visibleHours = 6,
 }: TimeGridProps) {
   const isMobile = useIsMobile();
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ dayIndex: number; hour: number; minute: number } | null>(null);
 
-  // Fullscreen mode
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  // Mobile navigation state
-  const [dayOffset, setDayOffset] = useState(0);
-  const [timeOffset, setTimeOffset] = useState(0);
-
-  // Calculate max offsets
-  const maxDayOffset = Math.max(0, days.length - visibleDays);
-  const maxTimeOffset = Math.max(0, HOURS.length - visibleHours);
-
-  // Get visible range for mobile (fullscreen shows all)
-  const showLimited = isMobile && !isFullscreen;
-  const visibleDayIndices = showLimited
-    ? Array.from({ length: Math.min(visibleDays, days.length - dayOffset) }, (_, i) => dayOffset + i)
-    : Array.from({ length: days.length }, (_, i) => i);
-  const visibleHourIndices = showLimited
-    ? HOURS.slice(timeOffset, timeOffset + visibleHours)
-    : HOURS;
-
-  // Navigation handlers
-  const canNavigate = {
-    up: timeOffset > 0,
-    down: timeOffset < maxTimeOffset,
-    left: dayOffset > 0,
-    right: dayOffset < maxDayOffset,
-  };
-
-  const handleNavigate = (direction: 'up' | 'down' | 'left' | 'right') => {
-    switch (direction) {
-      case 'up':
-        setTimeOffset((prev) => Math.max(0, prev - 1));
-        break;
-      case 'down':
-        setTimeOffset((prev) => Math.min(maxTimeOffset, prev + 1));
-        break;
-      case 'left':
-        setDayOffset((prev) => Math.max(0, prev - 1));
-        break;
-      case 'right':
-        setDayOffset((prev) => Math.min(maxDayOffset, prev + 1));
-        break;
-    }
-  };
+  // Always show all content (modals handle mobile fullscreen)
+  const visibleDayIndices = Array.from({ length: days.length }, (_, i) => i);
+  const visibleHourIndices = HOURS;
 
   // Drag state as ref (no re-render during drag, only preview)
   const dragRef = useRef<DragState | null>(null);
@@ -404,8 +358,22 @@ export default function TimeGrid({
     return element?.getAttribute('data-key') ?? null;
   }, []);
 
-  const gridContent = (
-    <>
+  return (
+    <Layer level={1}>
+      <div
+        style={{
+          overflowX: 'auto',
+          overflowY: 'auto',
+          maxWidth: '100%',
+          userSelect: 'none',
+          background: palette.layer,
+          padding: '1rem',
+          borderRadius: 0,
+          border: `1px solid ${palette.border}`,
+          boxShadow: 'none',
+          touchAction: 'pan-x pan-y',
+        }}
+      >
       <div style={{ marginBottom: '0.75rem', display: 'flex', gap: isMobile ? '0.5rem' : '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: palette.text }}>
           {isMobile ? 'ドラッグで塗る' : 'Excelライクにドラッグ + ペイント塗り'}
@@ -413,17 +381,7 @@ export default function TimeGrid({
         {!isMobile && (
           <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
         )}
-        {isMobile && (
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            style={{ marginLeft: 'auto', padding: '0.5rem' }}
-          >
-            {isFullscreen ? '✕' : '⤢'}
-          </Button>
-        )}
-        <div style={{ marginLeft: isMobile ? undefined : 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
           {isMobile ? (mode === 'select' ? selectedSlots.size : availability.size) : `${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
         </div>
       </div>
@@ -447,43 +405,13 @@ export default function TimeGrid({
         </div>
       )}
 
-      {/* Mobile navigation: Up button */}
-      {showLimited && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => handleNavigate('up')}
-            disabled={!canNavigate.up}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            ↑
-          </Button>
-        </div>
-      )}
-
-      {/* Mobile navigation: Left/Right + Grid */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        {/* Left button */}
-        {showLimited && (
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => handleNavigate('left')}
-            disabled={!canNavigate.left}
-            style={{ padding: '0.5rem', minWidth: '32px' }}
-          >
-            ←
-          </Button>
-        )}
-
-        <div
-          ref={gridRef}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: showLimited
-              ? `${timeCellWidth} repeat(${visibleDayIndices.length}, ${cellWidth})`
-              : (isMobile ? `${timeCellWidth} repeat(${days.length}, ${cellWidth})` : `72px repeat(${days.length}, 72px)`),
+      <div
+        ref={gridRef}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile
+            ? `${timeCellWidth} repeat(${days.length}, ${cellWidth})`
+            : `72px repeat(${days.length}, 72px)`,
             gap: '1px',
             background: palette.border,
             border: `1px solid ${palette.border}`,
@@ -596,86 +524,6 @@ export default function TimeGrid({
             })
           )}
         </div>
-
-        {/* Right button */}
-        {showLimited && (
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => handleNavigate('right')}
-            disabled={!canNavigate.right}
-            style={{ padding: '0.5rem', minWidth: '32px' }}
-          >
-            →
-          </Button>
-        )}
-      </div>
-
-      {/* Mobile navigation: Down button */}
-      {showLimited && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => handleNavigate('down')}
-            disabled={!canNavigate.down}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            ↓
-          </Button>
-        </div>
-      )}
-    </>
-  );
-
-  // Fullscreen overlay for mobile
-  if (isFullscreen && isMobile) {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 9999,
-          background: palette.layer,
-          overflow: 'auto',
-          padding: '1rem',
-          touchAction: 'pan-x pan-y',
-        }}
-      >
-        <Layer level={1}>
-          <div
-            style={{
-              userSelect: 'none',
-              background: palette.layer,
-            }}
-          >
-            {gridContent}
-          </div>
-        </Layer>
-      </div>
-    );
-  }
-
-  return (
-    <Layer level={1}>
-      <div
-        style={{
-          overflowX: isMobile ? 'hidden' : 'scroll',
-          overflowY: isMobile ? 'hidden' : undefined,
-          maxWidth: '100%',
-          userSelect: 'none',
-          background: palette.layer,
-          padding: '1rem',
-          borderRadius: 0,
-          border: `1px solid ${palette.border}`,
-          boxShadow: 'none',
-          touchAction: isMobile ? 'none' : 'pan-x',
-        }}
-      >
-        {gridContent}
       </div>
     </Layer>
   );

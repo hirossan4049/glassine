@@ -11,6 +11,7 @@ import {
 import { ArrowLeft, Calendar, Time } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
+import FullscreenModal from './FullscreenModal';
 import type { Event, Availability } from '../types';
 import { addRespondedEvent } from '../utils/history';
 import { FORM } from '../constants/layout';
@@ -310,56 +311,33 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       </Stack>
 
       {/* Availability Modal for Mobile */}
-      {showAvailabilityModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            background: 'var(--cds-layer-01)',
-            overflow: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div style={{ padding: '1rem', borderBottom: '1px solid var(--cds-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="cds--type-productive-heading-03">可否を入力</h2>
-            <Button kind="ghost" size="sm" onClick={() => setShowAvailabilityModal(false)}>
-              ✕
-            </Button>
-          </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
-            {isDateOnly ? (
-              <CalendarGrid
-                selectedDates={new Set()}
-                onDatesChange={() => {}}
-                mode="availability"
-                availability={dateAvailability}
-                onAvailabilityChange={setDateAvailability}
-                allowedDates={allowedDates}
-              />
-            ) : (
-              <TimeGrid
-                slots={event?.slots || []}
-                selectedSlots={new Set()}
-                onSlotsChange={() => {}}
-                mode="availability"
-                availability={availability}
-                onAvailabilityChange={setAvailability}
-                days={dayLabels}
-              />
-            )}
-          </div>
-          <div style={{ padding: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }}>
-            <Button kind="primary" size="lg" onClick={() => setShowAvailabilityModal(false)} style={{ width: '100%' }}>
-              完了 ({currentAvailability.size}{inputUnit}入力済み)
-            </Button>
-          </div>
-        </div>
-      )}
+      <FullscreenModal
+        title="可否を入力"
+        isOpen={showAvailabilityModal}
+        onClose={() => setShowAvailabilityModal(false)}
+        footerText={`完了 (${currentAvailability.size}${inputUnit}入力済み)`}
+      >
+        {isDateOnly ? (
+          <CalendarGrid
+            selectedDates={new Set()}
+            onDatesChange={() => {}}
+            mode="availability"
+            availability={dateAvailability}
+            onAvailabilityChange={setDateAvailability}
+            allowedDates={allowedDates}
+          />
+        ) : (
+          <TimeGrid
+            slots={event?.slots || []}
+            selectedSlots={new Set()}
+            onSlotsChange={() => {}}
+            mode="availability"
+            availability={availability}
+            onAvailabilityChange={setAvailability}
+            days={dayLabels}
+          />
+        )}
+      </FullscreenModal>
     </div>
   );
 }
