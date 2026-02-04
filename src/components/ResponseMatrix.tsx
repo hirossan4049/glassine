@@ -103,7 +103,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                 style={{
                   padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
-                  background: 'var(--cds-layer-02)',
+                  background: '#f4f4f4',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
@@ -139,7 +139,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                 style={{
                   padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
-                  background: 'var(--cds-layer-02)',
+                  background: '#f4f4f4',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
@@ -154,7 +154,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                 style={{
                   padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
-                  background: 'var(--cds-layer-02)',
+                  background: '#f4f4f4',
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
@@ -183,7 +183,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
           </tr>
         </thead>
         <tbody>
-          <tr style={{ background: 'var(--cds-layer-01)' }}>
+          <tr style={{ background: '#ffffff' }}>
             <td
               style={{
                 padding: cellPadding,
@@ -191,7 +191,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                 fontWeight: 'bold',
                 position: 'sticky',
                 left: 0,
-                background: 'var(--cds-layer-01)',
+                background: '#ffffff',
                 zIndex: 1,
                 minWidth: stickyWidth,
                 fontSize: isMobile ? '0.75rem' : undefined,
@@ -208,7 +208,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                   textAlign: 'center',
                   fontSize: isMobile ? '0.65rem' : '0.75rem',
                   lineHeight: 1.2,
-                  background: 'var(--cds-layer-01)',
+                  background: '#ffffff',
                 }}
               >
                 {isMobile ? (
@@ -224,14 +224,14 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
             ))}
           </tr>
           {responses.map((response) => (
-            <tr key={response.id} style={{ background: 'var(--cds-layer-01)' }}>
+            <tr key={response.id} style={{ background: '#ffffff' }}>
               <td
                 style={{
                   padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
                   position: 'sticky',
                   left: 0,
-                  background: 'var(--cds-layer-01)',
+                  background: '#ffffff',
                   zIndex: 1,
                   whiteSpace: 'nowrap',
                   minWidth: stickyWidth,
@@ -281,7 +281,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                       fontSize: isMobile ? '1rem' : '1.2rem',
                       color: getAvailabilityColor(availability),
                       fontWeight: 'bold',
-                      background: 'var(--cds-layer-01)',
+                      background: '#ffffff',
                     }}
                   >
                     {getAvailabilitySymbol(availability)}
