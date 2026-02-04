@@ -217,7 +217,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
               size="lg"
               renderIcon={Calendar}
               onClick={() => setShowCalendarModal(true)}
-              style={{ width: '100%' }}
+              style={{ minWidth: '100%' }}
             >
               候補日を選択 ({selectedDates.size}日選択中)
             </Button>
@@ -251,7 +251,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
                 size="lg"
                 renderIcon={Time}
                 onClick={() => setShowTimeModal(true)}
-                style={{ width: '100%' }}
+                style={{ minWidth: '100%' }}
               >
                 候補時間を選択 ({selectedSlots.size}スロット選択中)
               </Button>
@@ -285,6 +285,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
           size="lg"
           onClick={handleCreate}
           disabled={creating}
+          style={{ minWidth: isMobile ? '100%' : undefined }}
         >
           {creating ? '作成中...' : 'イベントを作成'}
         </Button>
