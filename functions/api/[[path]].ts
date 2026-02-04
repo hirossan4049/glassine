@@ -116,7 +116,6 @@ app.get('/events/:id', async (c) => {
     description: eventResult.description,
     editToken: isEdit ? eventResult.edit_token : '',
     viewToken: eventResult.view_token,
-    webhookUrl: eventResult.webhook_url || undefined,
     createdAt: eventResult.created_at,
     confirmedSlots: eventResult.confirmed_slots,
     timezone: eventResult.timezone,
@@ -177,7 +176,7 @@ app.post('/events/:id/responses', async (c) => {
         body: JSON.stringify(payload),
       });
     } catch (err) {
-      console.error('Webhook dispatch failed', err);
+      console.error('Webhook dispatch failed for URL:', webhookResult.webhook_url, err);
     }
   }
 
@@ -447,7 +446,7 @@ app.post('/events/:id/confirm', async (c) => {
       ).bind(eventId, confirmed).first<any>();
       if (slot) {
         const startDate = new Date(slot.start_time);
-        const endDate = new Date(slot.end_time + (isAllDay ? 1000 * 60 * 60 * 24 : 0));
+        const endDate = new Date(slot.end_time);
         const start = formatForGoogleCalendar(startDate, isAllDay);
         const end = formatForGoogleCalendar(endDate, isAllDay);
         timeText = `${start} - ${end}`;
@@ -470,7 +469,7 @@ app.post('/events/:id/confirm', async (c) => {
         body: JSON.stringify(payload),
       });
     } catch (err) {
-      console.error('Webhook dispatch failed', err);
+      console.error('Webhook dispatch failed for URL:', webhookResult.webhook_url, err);
     }
   }
 
