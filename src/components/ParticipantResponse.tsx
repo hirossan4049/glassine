@@ -8,7 +8,7 @@ import {
   Stack,
   FormLabel,
 } from '@carbon/react';
-import { ArrowLeft, Checkmark } from '@carbon/react/icons';
+import { ArrowLeft } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { Event, Availability } from '../types';
@@ -38,7 +38,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     loadEvent();
@@ -153,10 +152,8 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
             viewToken: token,
           });
         }
-        setSuccess(true);
-        setName('');
-        setAvailability(new Map());
-        setDateAvailability(new Map());
+        // 回答状況ページに遷移
+        window.location.href = `/v/${eventId}?token=${token}`;
       } else {
         setError(data.error || '回答の送信に失敗しました');
       }
@@ -188,30 +185,6 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           <Button kind="secondary" onClick={onBack}>
             戻る
           </Button>
-        </Stack>
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div className="glassine-home">
-        <Stack gap={5}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Checkmark size={24} style={{ color: 'var(--cds-support-success)' }} />
-            <h1 className="cds--type-productive-heading-04" style={{ color: 'var(--cds-support-success)' }}>
-              回答を送信しました
-            </h1>
-          </div>
-          <p className="cds--type-body-01">ご協力ありがとうございました。</p>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <Button kind="primary" onClick={() => setSuccess(false)}>
-              もう一度回答する
-            </Button>
-            <Button kind="secondary" onClick={onBack}>
-              トップに戻る
-            </Button>
-          </div>
         </Stack>
       </div>
     );
