@@ -5,15 +5,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run dev:client & wrangler pages dev --proxy 5173 --d1=DB --persist-to=.wrangler/state",
-    "dev:client": "vite --host",
-    "dev:wrangler": "npm run build && wrangler pages dev dist --d1=DB --persist-to=.wrangler/state",
+    "dev": "wrangler pages dev",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "deploy": "npm run build && wrangler pages deploy dist",
+    "test:types": "tsc --noEmit",
     "lint": "oxlint",
-    "deploy": "wrangler pages deploy dist",
-    "db:init": "wrangler d1 execute glassine-db --local --file=schema/schema.sql",
-    "db:init:remote": "wrangler d1 execute glassine-db --remote --file=schema/schema.sql"
+    "local:db": "wrangler d1 execute glassine-db --local --file=schema/schema.sql",
+    "remote:db": "wrangler d1 execute glassine-db --remote --file=schema/schema.sql"
   },
   "dependencies": {
     "@carbon/react": "^1.64.0",
