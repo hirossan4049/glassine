@@ -463,8 +463,13 @@ app.get('/events/:id/aggregation', async (c) => {
     score: row.available_count * 2 + row.maybe_count * 1,
   }));
 
-  // Sort by score descending
-  aggregation.sort((a, b) => b.score - a.score);
+  // Sort by score descending, then by start time ascending (for same score)
+  aggregation.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    return a.slot.start - b.slot.start;
+  });
 
   return c.json({ aggregation });
 });

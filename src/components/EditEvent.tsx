@@ -25,6 +25,9 @@ import { FORM } from '../constants/layout';
 
 function formatSlotDisplay(slot: EventSlot, mode: EventMode): string {
   const date = new Date(slot.start);
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const weekday = weekdays[date.getDay()];
+
   if (mode === 'dateonly') {
     return date.toLocaleDateString('ja-JP', {
       year: 'numeric',
@@ -33,7 +36,11 @@ function formatSlotDisplay(slot: EventSlot, mode: EventMode): string {
       weekday: 'short',
     });
   } else {
-    return date.toLocaleString('ja-JP');
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${month}/${day}(${weekday}) ${hours}:${minutes}`;
   }
 }
 
@@ -347,6 +354,8 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
             event={event}
             onEditResponse={handleEditResponse}
             onDeleteResponse={canEdit ? handleDeleteResponse : undefined}
+            onConfirmSlot={canEdit ? (index) => handleConfirm([index]) : undefined}
+            canEdit={canEdit}
           />
         </div>
 

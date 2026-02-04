@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Button, Tile } from '@carbon/react';
-import { Edit, TrashCan } from '@carbon/react/icons';
+import { Edit, TrashCan, Checkmark } from '@carbon/react/icons';
 import type { Event, EventSlot, ParticipantResponse, Availability, EventMode } from '../types';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { RESPONSE_MATRIX } from '../constants/layout';
@@ -8,6 +9,8 @@ interface ResponseMatrixProps {
   event: Event;
   onEditResponse?: (response: ParticipantResponse) => void;
   onDeleteResponse?: (responseId: number) => void;
+  onConfirmSlot?: (slotIndex: number) => void;
+  canEdit?: boolean;
 }
 
 function formatSlotHeader(slot: EventSlot, mode: EventMode): { date: string; time?: string } {
@@ -49,8 +52,9 @@ function findResponseAvailability(
   return found?.availability;
 }
 
-export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse }: ResponseMatrixProps) {
+export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse, onConfirmSlot, canEdit }: ResponseMatrixProps) {
   const isMobile = useIsMobile();
+  const [hoveredSlotIndex, setHoveredSlotIndex] = useState<number | null>(null);
   const responses = event.responses || [];
   const slots = event.slots || [];
 
@@ -209,7 +213,10 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                   fontSize: isMobile ? '0.65rem' : '0.75rem',
                   lineHeight: 1.2,
                   background: '#ffffff',
+                  position: 'relative',
                 }}
+                onMouseEnter={() => !isMobile && canEdit && setHoveredSlotIndex(i)}
+                onMouseLeave={() => !isMobile && setHoveredSlotIndex(null)}
               >
                 {isMobile ? (
                   <div style={{ color: 'var(--glassine-available)' }}>{total.available}</div>
@@ -219,6 +226,31 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                     <div style={{ color: 'var(--glassine-maybe)' }}>△{total.maybe}</div>
                     <div style={{ color: 'var(--glassine-unavailable)' }}>×{total.unavailable}</div>
                   </>
+                )}
+                {hoveredSlotIndex === i && onConfirmSlot && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(255, 255, 255, 0.9)',
+                    }}
+                  >
+                    <Button
+                      kind="primary"
+                      size="sm"
+                      hasIconOnly
+                      renderIcon={Checkmark}
+                      iconDescription="確定"
+                      onClick={() => onConfirmSlot(i)}
+                      style={{ minHeight: '24px', padding: '0.25rem' }}
+                    />
+                  </div>
                 )}
               </td>
             ))}
