@@ -8,7 +8,7 @@ export const BREAKPOINTS = {
 
 export const TIME_GRID = {
   cellWidth: {
-    mobile: 'minmax(48px, 1fr)',
+    mobile: '48px',
     desktop: '72px',
   },
   timeCellWidth: {

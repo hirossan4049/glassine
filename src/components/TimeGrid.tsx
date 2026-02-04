@@ -359,13 +359,14 @@ export default function TimeGrid({
       <div
         style={{
           overflowX: 'auto',
+          maxWidth: '100%',
           userSelect: 'none',
           background: palette.layer,
           padding: '1rem',
           borderRadius: 0,
           border: `1px solid ${palette.border}`,
           boxShadow: 'none',
-          touchAction: 'none', // Prevent scroll during drag on touch
+          touchAction: 'pan-x', // Allow horizontal scroll, prevent vertical during drag
         }}
       >
       <div style={{ marginBottom: '0.75rem', display: 'flex', gap: isMobile ? '0.5rem' : '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -409,7 +410,7 @@ export default function TimeGrid({
           gap: '1px',
           background: palette.border,
           border: `1px solid ${palette.border}`,
-          minWidth: isMobile ? '100%' : 'fit-content',
+          width: 'fit-content',
           borderRadius: 0,
           overflow: 'hidden',
         }}

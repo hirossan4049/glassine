@@ -121,7 +121,7 @@ $breakpoint-md: 768px;
 
 @media (max-width: $breakpoint-md) {
   :root {
-    --glassine-time-cell-width: minmax(48px, 1fr);
+    --glassine-time-cell-width: 48px;
     --glassine-time-cell-width-header: 56px;
     --glassine-calendar-month-min-width: 100%;
     --glassine-matrix-sticky-width: 80px;
