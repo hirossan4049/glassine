@@ -128,7 +128,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       } else {
         setError(data.error || 'イベントの作成に失敗しました');
       }
-    } catch (_err) {
+    } catch {
       setError('ネットワークエラーが発生しました');
     } finally {
       setCreating(false);

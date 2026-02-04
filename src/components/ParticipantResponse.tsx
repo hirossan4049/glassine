@@ -59,7 +59,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       } else {
         setError(data.error || 'イベントの読み込みに失敗しました');
       }
-    } catch (_err) {
+    } catch {
       setError('ネットワークエラーが発生しました');
     } finally {
       setLoading(false);
@@ -163,7 +163,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
       } else {
         setError(data.error || '回答の送信に失敗しました');
       }
-    } catch (_err) {
+    } catch {
       setError('ネットワークエラーが発生しました');
     } finally {
       setSubmitting(false);

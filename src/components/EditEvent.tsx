@@ -69,7 +69,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
       } else {
         setError(data.error || 'イベントの読み込みに失敗しました');
       }
-    } catch (_err) {
+    } catch {
       setError('ネットワークエラーが発生しました');
     } finally {
       setLoading(false);
@@ -104,7 +104,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
         const data = await response.json() as any;
         setError(data.error || '確定に失敗しました');
       }
-    } catch (_err) {
+    } catch {
       setError('ネットワークエラーが発生しました');
     } finally {
       setConfirming(false);
@@ -124,7 +124,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
         const data = await response.json() as any;
         setError(data.error || '削除に失敗しました');
       }
-    } catch (_err) {
+    } catch {
       setError('ネットワークエラーが発生しました');
     }
   };
@@ -274,7 +274,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
           </div>
         )}
 
-        <div　style={{overflowX: isMobile ? 'auto' : 'scroll' }}>
+        <div style={{overflowX: isMobile ? 'auto' : 'scroll' }}>
           <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '0.5rem' }}>回答状況</h2>
           <p className="cds--type-body-01" style={{ marginBottom: '1rem' }}>
             回答者数: {event.responses?.length || 0}

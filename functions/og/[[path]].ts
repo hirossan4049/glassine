@@ -44,7 +44,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         'Cache-Control': 'public, max-age=3600',
       },
     });
-  } catch (_error) {
+  } catch {
     return new Response('Error generating OG image', { status: 500 });
   }
 };

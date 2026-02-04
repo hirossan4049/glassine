@@ -154,7 +154,7 @@ export default function ResponseEditor({ event, response, onSave, onCancel }: Re
       } else {
         setError(data.error || '回答の更新に失敗しました');
       }
-    } catch (_err) {
+    } catch {
       setError('ネットワークエラーが発生しました');
     } finally {
       setSubmitting(false);
