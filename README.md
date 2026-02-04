@@ -1,6 +1,6 @@
 # Glassine
 
-https://github.com/hirossan4049/glassine/blob/main/docs/assets/glassine-demo.webm
+![glassine-demo](./docs/assets/glassine-demo.gif)
 
 ログイン不要の日程調整ツール
 
