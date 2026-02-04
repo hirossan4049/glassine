@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Button } from '@carbon/react';
+import { X } from 'lucide-react';
 
 interface FullscreenModalProps {
   title: string;
@@ -45,7 +46,7 @@ export default function FullscreenModal({
       >
         <h2 className="cds--type-productive-heading-03">{title}</h2>
         <Button kind="ghost" size="sm" onClick={onClose}>
-          ✕
+          <X size={20} />
         </Button>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>

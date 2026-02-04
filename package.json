@@ -19,6 +19,7 @@
     "@carbon/styles": "^1.99.0",
     "@cf-wasm/resvg": "^0.3.3",
     "hono": "^4.6.11",
+    "lucide-react": "^0.563.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

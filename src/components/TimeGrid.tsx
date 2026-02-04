@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import { Button, Layer } from '@carbon/react';
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TimeSlot, Availability } from '../types';
 import { useIsMobile } from '../hooks/useMediaQuery';
 import { TIME_GRID, STATUS_DISPLAY } from '../constants/layout';
@@ -454,7 +455,7 @@ export default function TimeGrid({
             disabled={!canNavigate.up}
             style={{ minWidth: '44px', padding: '0.5rem' }}
           >
-            ↑
+            <ChevronUp size={20} />
           </Button>
         </div>
       )}
@@ -469,7 +470,7 @@ export default function TimeGrid({
             disabled={!canNavigate.left}
             style={{ minWidth: '44px', padding: '0.5rem', flexShrink: 0 }}
           >
-            ←
+            <ChevronLeft size={20} />
           </Button>
         )}
 
@@ -601,7 +602,7 @@ export default function TimeGrid({
             disabled={!canNavigate.right}
             style={{ minWidth: '44px', padding: '0.5rem', flexShrink: 0 }}
           >
-            →
+            <ChevronRight size={20} />
           </Button>
         )}
       </div>
@@ -616,7 +617,7 @@ export default function TimeGrid({
             disabled={!canNavigate.down}
             style={{ minWidth: '44px', padding: '0.5rem' }}
           >
-            ↓
+            <ChevronDown size={20} />
           </Button>
         </div>
       )}
