@@ -434,7 +434,7 @@ app.post('/events/:id/confirm', async (c) => {
   ).bind(JSON.stringify(body.confirmedSlots), eventId).run();
 
   const webhookResult = await c.env.DB.prepare(
-    'SELECT webhook_url, title, description, mode FROM events WHERE id = ?'
+    'SELECT webhook_url, title, description, mode, view_token, timezone FROM events WHERE id = ?'
   ).bind(eventId).first<any>();
 
   if (webhookResult?.webhook_url) {
@@ -459,7 +459,7 @@ app.post('/events/:id/confirm', async (c) => {
         {
           title: webhookResult.title,
           description: webhookResult.description || '',
-          url: `${new URL(c.req.url).origin}/v/${eventId}?token=${eventResult.edit_token}`,
+          url: `${new URL(c.req.url).origin}/v/${eventId}?token=${webhookResult.view_token}`,
         },
       ],
     };
