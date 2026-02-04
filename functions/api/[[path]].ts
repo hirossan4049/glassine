@@ -25,6 +25,66 @@ function formatForGoogleCalendar(date: Date, isAllDay: boolean): string {
   return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
 }
 
+function isDiscordWebhook(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === 'discord.com' && parsed.pathname.startsWith('/api/webhooks/');
+  } catch {
+    return false;
+  }
+}
+
+function buildGoogleCalendarLink({
+  title,
+  description,
+  start,
+  end,
+  timezone,
+  isAllDay,
+}: {
+  title: string;
+  description?: string | null;
+  start: Date;
+  end: Date;
+  timezone: string;
+  isAllDay: boolean;
+}): string {
+  const startStr = formatForGoogleCalendar(start, isAllDay);
+  const endStr = formatForGoogleCalendar(end, isAllDay);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    details: description || '',
+    dates: `${startStr}/${endStr}`,
+    ctz: timezone,
+  });
+  return `https://www.google.com/calendar/render?${params.toString()}`;
+}
+
+function buildDiscordEmbed({
+  title,
+  description,
+  url,
+  footer,
+  fields,
+}: {
+  title: string;
+  description?: string;
+  url?: string;
+  footer?: string;
+  fields?: { name: string; value: string; inline?: boolean }[];
+}) {
+  return {
+    title,
+    description,
+    url,
+    color: 0x667eea,
+    fields,
+    footer: footer ? { text: footer } : undefined,
+  };
+}
+
 // Create event
 app.post('/events', async (c) => {
   const body: CreateEventRequest = await c.req.json();
@@ -162,13 +222,38 @@ app.post('/events/:id/responses', async (c) => {
   }
 
   const webhookResult = await c.env.DB.prepare(
-    'SELECT webhook_url, title FROM events WHERE id = ?'
+    'SELECT webhook_url, title, view_token FROM events WHERE id = ?'
   ).bind(eventId).first<any>();
 
   if (webhookResult?.webhook_url) {
-    const payload = {
-      text: `新しい回答: ${body.participantName} さんが "${webhookResult.title}" に回答しました`,
-    };
+    const viewUrl = `${new URL(c.req.url).origin}/v/${eventId}?token=${webhookResult.view_token}`;
+    const isDiscord = isDiscordWebhook(webhookResult.webhook_url);
+    const payload = isDiscord
+      ? {
+          content: `新しい回答が届きました`,
+          embeds: [
+            buildDiscordEmbed({
+              title: webhookResult.title || 'イベント',
+              description: `${body.participantName} さんが回答しました。`,
+              url: viewUrl,
+              fields: [
+                {
+                  name: '回答者',
+                  value: body.participantName,
+                  inline: true,
+                },
+                {
+                  name: '回答スロット数',
+                  value: String(body.slots.length),
+                  inline: true,
+                },
+              ],
+            }),
+          ],
+        }
+      : {
+          text: `新しい回答: ${body.participantName} さんが "${webhookResult.title}" に回答しました`,
+        };
     try {
       await fetch(webhookResult.webhook_url, {
         method: 'POST',
@@ -440,6 +525,7 @@ app.post('/events/:id/confirm', async (c) => {
     const isAllDay = webhookResult.mode === 'dateonly';
     const confirmed = body.confirmedSlots[0];
     let timeText = '';
+    let googleCalUrl = '';
     if (confirmed !== undefined) {
       const slot = await c.env.DB.prepare(
         'SELECT start_time, end_time FROM event_slots WHERE event_id = ? ORDER BY start_time LIMIT 1 OFFSET ?'
@@ -450,18 +536,60 @@ app.post('/events/:id/confirm', async (c) => {
         const start = formatForGoogleCalendar(startDate, isAllDay);
         const end = formatForGoogleCalendar(endDate, isAllDay);
         timeText = `${start} - ${end}`;
+        googleCalUrl = buildGoogleCalendarLink({
+          title: webhookResult.title || 'イベント',
+          description: webhookResult.description,
+          start: startDate,
+          end: endDate,
+          timezone: webhookResult.timezone || 'UTC',
+          isAllDay,
+        });
       }
     }
-    const payload = {
-      text: `イベントが確定しました: ${webhookResult.title}${timeText ? ` (${timeText})` : ''}`,
-      embeds: [
-        {
-          title: webhookResult.title,
-          description: webhookResult.description || '',
-          url: `${new URL(c.req.url).origin}/v/${eventId}?token=${webhookResult.view_token}`,
-        },
-      ],
-    };
+    const viewUrl = `${new URL(c.req.url).origin}/v/${eventId}?token=${webhookResult.view_token}`;
+    const isDiscord = isDiscordWebhook(webhookResult.webhook_url);
+    const payload = isDiscord
+      ? {
+          content: `イベントが確定しました`,
+          embeds: [
+            buildDiscordEmbed({
+              title: webhookResult.title || 'イベント',
+              description: webhookResult.description || '',
+              url: viewUrl,
+              footer: timeText ? `UTC: ${timeText}` : undefined,
+              fields: [
+                ...(timeText
+                  ? [
+                      {
+                        name: '日時',
+                        value: timeText,
+                        inline: false,
+                      },
+                    ]
+                  : []),
+                ...(googleCalUrl
+                  ? [
+                      {
+                        name: 'Google Calendar',
+                        value: `[追加する](${googleCalUrl})`,
+                        inline: false,
+                      },
+                    ]
+                  : []),
+              ],
+            }),
+          ],
+        }
+      : {
+          text: `イベントが確定しました: ${webhookResult.title}${timeText ? ` (${timeText})` : ''}`,
+          embeds: [
+            {
+              title: webhookResult.title,
+              description: webhookResult.description || '',
+              url: viewUrl,
+            },
+          ],
+        };
     try {
       await fetch(webhookResult.webhook_url, {
         method: 'POST',
