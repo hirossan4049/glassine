@@ -13,6 +13,10 @@ async function record() {
     throw new Error('ffmpeg not found. Please ensure ffmpeg-static is installed.');
   }
 
+  if (!existsSync(OUTPUT_DIR)) {
+    mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
+
   const browser = await chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
   const videoDir = join(process.cwd(), 'tmp', 'videos');
   const context = await browser.newContext({
@@ -50,14 +54,13 @@ async function record() {
     throw new Error('Video was not recorded');
   }
   const videoPath = await video.path();
+  if (!existsSync(videoPath)) {
+    throw new Error(`Video file not found at ${videoPath}`);
+  }
   await browser.close();
 
-  if (!existsSync(OUTPUT_DIR)) {
-    mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
-
   // Convert to GIF using ffmpeg
-  spawnSync(ffmpegPath, [
+  const ffmpegResult = spawnSync(ffmpegPath, [
     '-y',
     '-i',
     videoPath,
@@ -65,6 +68,10 @@ async function record() {
     'fps=10,scale=640:-1:flags=lanczos',
     OUTPUT_GIF,
   ], { stdio: 'inherit' });
+
+  if (ffmpegResult.status !== 0) {
+    throw new Error('ffmpeg conversion failed');
+  }
 
   console.log(`GIF generated at: ${OUTPUT_GIF}`);
 }

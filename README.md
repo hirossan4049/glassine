@@ -137,7 +137,7 @@ MIT
 
 - E2Eテスト実行: `npm run test:e2e` (Playwright)
 - Docs用GIF生成: `npm run e2e:docs`
-  - 事前に `npm run preview` などで `http://localhost:4173` を起動しておくか、`BASE_URL` 環境変数で対象URLを指定してください。
+  - `BASE_URL` 環境変数で対象URLを指定してください（例: `BASE_URL=http://localhost:4173 npm run e2e:docs`）。自動サーバ起動は行わないため、必要に応じて別途 `npm run preview -- --host --port 4173` などで起動してください。
   - 生成物: `docs/assets/glassine-demo.gif`
 
 ### 貢献
