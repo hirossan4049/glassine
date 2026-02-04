@@ -405,6 +405,7 @@ export default function TimeGrid({
           overflowX: 'auto',
           overflowY: 'auto',
           maxWidth: '100%',
+          minHeight: isMobile ? '60vh' : undefined,
           userSelect: 'none',
           background: palette.layer,
           padding: '1rem',

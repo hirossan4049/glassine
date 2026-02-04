@@ -19,18 +19,18 @@ export default function FullscreenModal({
 }: FullscreenModalProps) {
   if (!isOpen) return null;
 
+  const viewportHeight = '100dvh';
+
   return (
     <div
       style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
+        height: viewportHeight,
+        maxHeight: viewportHeight,
         zIndex: 9999,
-        background: 'var(--cds-background)',
-        backgroundColor: '#fff',
-        overflow: 'auto',
+        background: 'var(--cds-background, #fff)',
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -49,10 +49,16 @@ export default function FullscreenModal({
           <X size={20} />
         </Button>
       </div>
-      <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '1rem' }}>
         {children}
       </div>
-      <div style={{ padding: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }}>
+      <div
+        style={{
+          padding: '1rem',
+          paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))',
+          borderTop: '1px solid var(--cds-border-subtle)',
+        }}
+      >
         <Button kind="primary" size="lg" onClick={onClose} style={{ width: '100%' }}>
           {footerText || '完了'}
         </Button>
