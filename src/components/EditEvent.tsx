@@ -345,7 +345,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
             <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '1rem' }}>
               おすすめ候補{event.mode === 'dateonly' ? '日程' : '日時'}
             </h2>
-            <div style={{ overflowX: isMobile ? 'hidden' : 'scroll', WebkitOverflowScrolling: isMobile ? undefined : 'touch' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <DataTable rows={rows} headers={headers}>
                 {({ rows: tableRows, headers: tableHeaders, getTableProps, getHeaderProps, getRowProps }) => (
                   <Table {...getTableProps()}>
