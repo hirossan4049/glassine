@@ -388,11 +388,9 @@ export default function TimeGrid({
         {!isMobile && (
           <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
         )}
-        {lastClickedKey && (
-          <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}` }}>
-            {isMobile ? (mode === 'select' ? selectedSlots.size : availability.size) : `${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
-          </div>
-        )}
+        <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? 'auto' : '200px', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+          {isMobile ? (mode === 'select' ? selectedSlots.size : availability.size) : `${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
+        </div>
       </div>
       {mode === 'availability' && (
         <div style={{ marginBottom: isMobile ? '0.75rem' : '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

@@ -563,8 +563,10 @@ export default function CalendarGrid({
             border: `1px solid ${palette.border}`,
             boxShadow: 'none',
             visibility: lastClickedKey ? 'visible' : 'hidden',
-            minWidth: isMobile ? 'auto' : '220px',
+            width: isMobile ? 'auto' : '220px',
+            flexShrink: 0,
             whiteSpace: 'nowrap',
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {isMobile ? (mode === 'select' ? selectedDates.size : availability.size) : `${mode === 'select' ? '選択日数' : '設定日数'}: ${mode === 'select' ? selectedDates.size : availability.size} / 起点 ${lastClickedKey || '----/--/--'}`}
