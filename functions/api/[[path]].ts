@@ -334,8 +334,8 @@ app.get('/events/:id/aggregation', async (c) => {
             COALESCE(SUM(CASE WHEN rs.availability = 'maybe' THEN 1 ELSE 0 END), 0) as maybe_count,
             COALESCE(SUM(CASE WHEN rs.availability = 'unavailable' THEN 1 ELSE 0 END), 0) as unavailable_count
      FROM event_slots es
-     LEFT JOIN response_slots rs ON es.start_time = rs.slot_start AND es.end_time = rs.slot_end
-     LEFT JOIN responses r ON rs.response_id = r.id AND r.event_id = es.event_id
+     LEFT JOIN responses r ON r.event_id = es.event_id
+     LEFT JOIN response_slots rs ON rs.response_id = r.id AND es.start_time = rs.slot_start AND es.end_time = rs.slot_end
      WHERE es.event_id = ?
      GROUP BY es.id, es.start_time, es.end_time
      ORDER BY es.start_time`
