@@ -8,12 +8,13 @@ import {
   Stack,
   FormLabel,
 } from '@carbon/react';
-import { ArrowLeft } from '@carbon/react/icons';
+import { ArrowLeft, Calendar, Time } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { TimeSlot, EventMode } from '../types';
 import { addCreatedEvent } from '../utils/history';
 import { FORM } from '../constants/layout';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 interface CreateEventProps {
   onBack: () => void;
@@ -22,6 +23,7 @@ interface CreateEventProps {
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 export default function CreateEvent({ onBack }: CreateEventProps) {
+  const isMobile = useIsMobile();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [mode, setMode] = useState<EventMode>('datetime');
@@ -29,6 +31,10 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+
+  // Modal state for mobile
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [showTimeModal, setShowTimeModal] = useState(false);
 
   const sortedDates = useMemo(() => {
     return Array.from(selectedDates).sort();
@@ -192,37 +198,65 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
             {mode === 'dateonly' ? '候補日程を選択' : 'Step 1: 候補日を選択'}
           </FormLabel>
           <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
-            カレンダー上をドラッグして候補日を選択してください
+            {isMobile ? 'ボタンをタップして候補日を選択' : 'カレンダー上をドラッグして候補日を選択してください'}
           </p>
-          <CalendarGrid
-            selectedDates={selectedDates}
-            onDatesChange={(dates) => {
-              setSelectedDates(dates);
-              if (mode === 'datetime') {
-                setSelectedSlots(new Set());
-              }
-            }}
-          />
-          <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
-            選択中: {selectedDates.size} 日
-          </p>
+          {isMobile ? (
+            <Button
+              kind="tertiary"
+              size="lg"
+              renderIcon={Calendar}
+              onClick={() => setShowCalendarModal(true)}
+              style={{ width: '100%' }}
+            >
+              候補日を選択 ({selectedDates.size}日選択中)
+            </Button>
+          ) : (
+            <CalendarGrid
+              selectedDates={selectedDates}
+              onDatesChange={(dates) => {
+                setSelectedDates(dates);
+                if (mode === 'datetime') {
+                  setSelectedSlots(new Set());
+                }
+              }}
+            />
+          )}
+          {!isMobile && (
+            <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
+              選択中: {selectedDates.size} 日
+            </p>
+          )}
         </div>
 
         {mode === 'datetime' && selectedDates.size > 0 && (
           <div>
             <FormLabel>Step 2: 候補時間を選択</FormLabel>
             <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
-              グリッド上をドラッグして候補時間を選択してください
+              {isMobile ? 'ボタンをタップして候補時間を選択' : 'グリッド上をドラッグして候補時間を選択してください'}
             </p>
-            <TimeGrid
-              slots={[]}
-              selectedSlots={selectedSlots}
-              onSlotsChange={setSelectedSlots}
-              days={dayLabels}
-            />
-            <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
-              選択中: {selectedSlots.size} スロット
-            </p>
+            {isMobile ? (
+              <Button
+                kind="tertiary"
+                size="lg"
+                renderIcon={Time}
+                onClick={() => setShowTimeModal(true)}
+                style={{ width: '100%' }}
+              >
+                候補時間を選択 ({selectedSlots.size}スロット選択中)
+              </Button>
+            ) : (
+              <TimeGrid
+                slots={[]}
+                selectedSlots={selectedSlots}
+                onSlotsChange={setSelectedSlots}
+                days={dayLabels}
+              />
+            )}
+            {!isMobile && (
+              <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
+                選択中: {selectedSlots.size} スロット
+              </p>
+            )}
           </div>
         )}
 
@@ -244,6 +278,85 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
           {creating ? '作成中...' : 'イベントを作成'}
         </Button>
       </Stack>
+
+      {/* Calendar Modal for Mobile */}
+      {showCalendarModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: 'var(--cds-layer-01)',
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{ padding: '1rem', borderBottom: '1px solid var(--cds-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 className="cds--type-productive-heading-03">候補日を選択</h2>
+            <Button kind="ghost" size="sm" onClick={() => setShowCalendarModal(false)}>
+              ✕
+            </Button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+            <CalendarGrid
+              selectedDates={selectedDates}
+              onDatesChange={(dates) => {
+                setSelectedDates(dates);
+                if (mode === 'datetime') {
+                  setSelectedSlots(new Set());
+                }
+              }}
+            />
+          </div>
+          <div style={{ padding: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }}>
+            <Button kind="primary" size="lg" onClick={() => setShowCalendarModal(false)} style={{ width: '100%' }}>
+              完了 ({selectedDates.size}日選択中)
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Time Grid Modal for Mobile */}
+      {showTimeModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: 'var(--cds-layer-01)',
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{ padding: '1rem', borderBottom: '1px solid var(--cds-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 className="cds--type-productive-heading-03">候補時間を選択</h2>
+            <Button kind="ghost" size="sm" onClick={() => setShowTimeModal(false)}>
+              ✕
+            </Button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+            <TimeGrid
+              slots={[]}
+              selectedSlots={selectedSlots}
+              onSlotsChange={setSelectedSlots}
+              days={dayLabels}
+            />
+          </div>
+          <div style={{ padding: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }}>
+            <Button kind="primary" size="lg" onClick={() => setShowTimeModal(false)} style={{ width: '100%' }}>
+              完了 ({selectedSlots.size}スロット選択中)
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

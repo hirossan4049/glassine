@@ -8,12 +8,13 @@ import {
   Stack,
   FormLabel,
 } from '@carbon/react';
-import { ArrowLeft } from '@carbon/react/icons';
+import { ArrowLeft, Calendar, Time } from '@carbon/react/icons';
 import TimeGrid from './TimeGrid';
 import CalendarGrid from './CalendarGrid';
 import type { Event, Availability } from '../types';
 import { addRespondedEvent } from '../utils/history';
 import { FORM } from '../constants/layout';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 interface ParticipantResponseProps {
   eventId: string;
@@ -31,6 +32,7 @@ function dateKey(date: Date): string {
 }
 
 export default function ParticipantResponse({ eventId, token, onBack }: ParticipantResponseProps) {
+  const isMobile = useIsMobile();
   const [event, setEvent] = useState<Event | null>(null);
   const [name, setName] = useState('');
   const [availability, setAvailability] = useState<Map<string, Availability>>(new Map());
@@ -38,6 +40,9 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Modal state for mobile
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
 
   useEffect(() => {
     loadEvent();
@@ -244,10 +249,20 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
         <div>
           <FormLabel>可否を入力</FormLabel>
           <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
-            ブラシを選択してから、{isDateOnly ? 'カレンダー' : 'グリッド'}上をクリック/ドラッグして可否を入力してください
+            {isMobile ? 'ボタンをタップして可否を入力' : `ブラシを選択してから、${isDateOnly ? 'カレンダー' : 'グリッド'}上をクリック/ドラッグして可否を入力してください`}
           </p>
 
-          {isDateOnly ? (
+          {isMobile ? (
+            <Button
+              kind="tertiary"
+              size="lg"
+              renderIcon={isDateOnly ? Calendar : Time}
+              onClick={() => setShowAvailabilityModal(true)}
+              style={{ width: '100%' }}
+            >
+              可否を入力 ({currentAvailability.size}{inputUnit}入力済み)
+            </Button>
+          ) : isDateOnly ? (
             <CalendarGrid
               selectedDates={new Set()}
               onDatesChange={() => {}}
@@ -268,9 +283,11 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
             />
           )}
 
-          <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
-            入力済み: {currentAvailability.size} {inputUnit}
-          </p>
+          {!isMobile && (
+            <p className="cds--type-helper-text-01" style={{ marginTop: '0.5rem' }}>
+              入力済み: {currentAvailability.size} {inputUnit}
+            </p>
+          )}
         </div>
 
         {error && (
@@ -291,6 +308,58 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           {submitting ? '送信中...' : '回答を送信'}
         </Button>
       </Stack>
+
+      {/* Availability Modal for Mobile */}
+      {showAvailabilityModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: 'var(--cds-layer-01)',
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{ padding: '1rem', borderBottom: '1px solid var(--cds-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 className="cds--type-productive-heading-03">可否を入力</h2>
+            <Button kind="ghost" size="sm" onClick={() => setShowAvailabilityModal(false)}>
+              ✕
+            </Button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+            {isDateOnly ? (
+              <CalendarGrid
+                selectedDates={new Set()}
+                onDatesChange={() => {}}
+                mode="availability"
+                availability={dateAvailability}
+                onAvailabilityChange={setDateAvailability}
+                allowedDates={allowedDates}
+              />
+            ) : (
+              <TimeGrid
+                slots={event?.slots || []}
+                selectedSlots={new Set()}
+                onSlotsChange={() => {}}
+                mode="availability"
+                availability={availability}
+                onAvailabilityChange={setAvailability}
+                days={dayLabels}
+              />
+            )}
+          </div>
+          <div style={{ padding: '1rem', borderTop: '1px solid var(--cds-border-subtle)' }}>
+            <Button kind="primary" size="lg" onClick={() => setShowAvailabilityModal(false)} style={{ width: '100%' }}>
+              完了 ({currentAvailability.size}{inputUnit}入力済み)
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
