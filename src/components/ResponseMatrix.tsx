@@ -208,6 +208,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                   textAlign: 'center',
                   fontSize: isMobile ? '0.65rem' : '0.75rem',
                   lineHeight: 1.2,
+                  background: 'var(--cds-layer-01)',
                 }}
               >
                 {isMobile ? (
@@ -223,14 +224,14 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
             ))}
           </tr>
           {responses.map((response) => (
-            <tr key={response.id}>
+            <tr key={response.id} style={{ background: 'var(--cds-layer-01)' }}>
               <td
                 style={{
                   padding: cellPadding,
                   border: '1px solid var(--cds-border-subtle)',
                   position: 'sticky',
                   left: 0,
-                  background: 'var(--cds-layer)',
+                  background: 'var(--cds-layer-01)',
                   zIndex: 1,
                   whiteSpace: 'nowrap',
                   minWidth: stickyWidth,
@@ -280,6 +281,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
                       fontSize: isMobile ? '1rem' : '1.2rem',
                       color: getAvailabilityColor(availability),
                       fontWeight: 'bold',
+                      background: 'var(--cds-layer-01)',
                     }}
                   >
                     {getAvailabilitySymbol(availability)}
