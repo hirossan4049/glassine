@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, Fragment } from 'react';
+import { useState, useRef, useCallback, useEffect, Fragment, useMemo } from 'react';
 import { Button, Layer } from '@carbon/react';
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TimeSlot, Availability } from '../types';
@@ -103,7 +103,7 @@ const TIME_CELL_WIDTH_PX = 56;
 const VERTICAL_OVERHEAD_PX = 300;
 
 export default function TimeGrid({
-  slots: _slots,
+  slots,
   selectedSlots,
   onSlotsChange,
   mode = 'select',
@@ -118,6 +118,35 @@ export default function TimeGrid({
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ dayIndex: number; hour: number; minute: number } | null>(null);
+
+  // Calculate allowed slot keys from slots prop (for availability mode)
+  const allowedSlotKeys = useMemo(() => {
+    if (mode !== 'availability' || slots.length === 0) return null;
+
+    // Extract unique dates from slots and sort them
+    const dateMap = new Map<string, number>();
+    const sortedDates: string[] = [];
+    for (const slot of slots) {
+      const date = new Date(slot.start);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      if (!dateMap.has(key)) {
+        dateMap.set(key, sortedDates.length);
+        sortedDates.push(key);
+      }
+    }
+
+    // Build set of allowed keys
+    const allowed = new Set<string>();
+    for (const slot of slots) {
+      const date = new Date(slot.start);
+      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const dayIndex = dateMap.get(dateKey)!;
+      const hour = date.getHours();
+      const minute = date.getMinutes();
+      allowed.add(slotKey(dayIndex, hour, minute));
+    }
+    return allowed;
+  }, [slots, mode]);
 
   // Navigation state for mobile
   const [dayOffset, setDayOffset] = useState(0);
@@ -231,7 +260,11 @@ export default function TimeGrid({
   const handlePointerDown = useCallback((key: string, shiftKey: boolean, e: React.PointerEvent) => {
     // Shift+click for range selection (immediate apply, no drag)
     if (shiftKey && lastClickedKey) {
-      const keysInRange = getKeysInRect(lastClickedKey, key, days.length);
+      let keysInRange = getKeysInRect(lastClickedKey, key, days.length);
+      // Filter out disabled keys in availability mode
+      if (allowedSlotKeys) {
+        keysInRange = keysInRange.filter((k) => allowedSlotKeys.has(k));
+      }
       const action: 'add' | 'remove' = selectedSlots.has(lastClickedKey) ? 'add' : 'remove';
       applyKeys(keysInRange, action);
       setLastClickedKey(key);
@@ -255,7 +288,7 @@ export default function TimeGrid({
 
     // Capture pointer for smooth drag even outside grid
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [applyKeys, availability, days.length, lastClickedKey, selectedSlots]);
+  }, [allowedSlotKeys, applyKeys, availability, days.length, lastClickedKey, selectedSlots]);
 
   // Update drag preview with RAF throttling
   const updateDragPreview = useCallback((key: string) => {
@@ -289,7 +322,11 @@ export default function TimeGrid({
     const drag = dragRef.current;
     if (!drag) return;
 
-    const keysInRange = getKeysInRect(drag.anchorKey, drag.currentKey, days.length);
+    let keysInRange = getKeysInRect(drag.anchorKey, drag.currentKey, days.length);
+    // Filter out disabled keys in availability mode
+    if (allowedSlotKeys) {
+      keysInRange = keysInRange.filter((k) => allowedSlotKeys.has(k));
+    }
 
     if (mode === 'select') {
       let newSlots: Set<string>;
@@ -317,7 +354,7 @@ export default function TimeGrid({
 
     dragRef.current = null;
     setDragPreviewKey((k) => k + 1);
-  }, [days.length, mode, onAvailabilityChange, onSlotsChange, selectedBrush]);
+  }, [allowedSlotKeys, days.length, mode, onAvailabilityChange, onSlotsChange, selectedBrush]);
 
   // Global pointer up handler for edge cases
   useEffect(() => {
@@ -357,7 +394,9 @@ export default function TimeGrid({
       // Availability mode
       if (drag) {
         const inRange = getKeysInRectSet(drag.anchorKey, drag.currentKey, days.length).has(key);
-        if (inRange) {
+        // Don't show preview for disabled keys
+        const isAllowed = !allowedSlotKeys || allowedSlotKeys.has(key);
+        if (inRange && isAllowed) {
           if (selectedBrush === 'clear') return palette.layer;
           if (selectedBrush === 'available') return palette.available;
           if (selectedBrush === 'maybe') return palette.maybe;
@@ -376,7 +415,7 @@ export default function TimeGrid({
       if (avail === 'unavailable') return palette.unavailable;
       return palette.layer;
     }
-  }, [availability, days.length, mode, selectedBrush, selectedSlots, dragPreviewKey]);
+  }, [allowedSlotKeys, availability, days.length, mode, selectedBrush, selectedSlots, dragPreviewKey]);
 
   const brushOptions: { value: Availability | 'clear'; label: string; symbol: string; symbolColor: string }[] = [
     { value: 'available', label: '参加可能', symbol: '○', symbolColor: 'var(--glassine-available)' },
@@ -583,27 +622,31 @@ export default function TimeGrid({
                     const key = slotKey(dayIndex, hour, minute);
                     const isHoverRow = hoveredCell?.hour === hour && hoveredCell?.minute === minute;
                     const isHoverCol = hoveredCell?.dayIndex === dayIndex;
+                    const isDisabled = allowedSlotKeys !== null && !allowedSlotKeys.has(key);
                     return (
                       <div
                         key={key}
-                        data-key={key}
-                        onPointerDown={(e) => handlePointerDown(key, e.shiftKey, e)}
-                        onPointerEnter={() => {
+                        data-key={isDisabled ? undefined : key}
+                        onPointerDown={isDisabled ? undefined : (e) => handlePointerDown(key, e.shiftKey, e)}
+                        onPointerEnter={isDisabled ? undefined : () => {
                           setHoveredCell({ dayIndex, hour, minute });
                           handlePointerMove(key);
                         }}
                         style={{
-                          background: getCellColor(key),
+                          background: isDisabled ? 'var(--cds-layer-02, #f4f4f4)' : getCellColor(key),
                           height: isMobile ? '40px' : '32px',
-                          cursor: 'pointer',
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
                           transition: 'background 0.08s, box-shadow 0.12s, transform 0.08s',
                           boxShadow:
-                            isHoverRow || isHoverCol
-                              ? 'inset 0 0 0 2px rgba(15,98,254,0.28)'
-                              : 'inset 0 0 0 1px rgba(0,0,0,0.03)',
+                            isDisabled
+                              ? 'none'
+                              : isHoverRow || isHoverCol
+                                ? 'inset 0 0 0 2px rgba(15,98,254,0.28)'
+                                : 'inset 0 0 0 1px rgba(0,0,0,0.03)',
                           borderRight: `1px solid ${palette.border}`,
                           borderBottom: `1px solid ${palette.border}`,
-                          transform: isHoverRow || isHoverCol ? 'scale(1.01)' : 'none',
+                          transform: isHoverRow || isHoverCol && !isDisabled ? 'scale(1.01)' : 'none',
+                          opacity: isDisabled ? 0.4 : 1,
                         }}
                       />
                     );
