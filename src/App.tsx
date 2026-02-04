@@ -3,11 +3,10 @@ import { Button, ClickableTile, Tag, Link, Stack } from '@carbon/react';
 import { Add } from '@carbon/react/icons';
 import CreateEvent from './components/CreateEvent';
 import EditEvent from './components/EditEvent';
-import ViewEvent from './components/ViewEvent';
 import ParticipantResponse from './components/ParticipantResponse';
 import { getHistoryItems, type HistoryItem } from './utils/history';
 
-type Page = 'home' | 'create' | 'edit' | 'view' | 'respond';
+type Page = 'home' | 'create' | 'edit' | 'respond';
 
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
@@ -38,7 +37,8 @@ function App() {
       setEventId(path.replace('/e/', ''));
       setToken(tokenParam);
     } else if (path.startsWith('/v/')) {
-      setPage('view');
+      // /v/ routes are now handled by edit page
+      setPage('edit');
       setEventId(path.replace('/v/', ''));
       setToken(tokenParam);
     } else if (path.startsWith('/r/')) {
@@ -68,10 +68,6 @@ function App() {
 
   if (page === 'edit') {
     return <EditEvent eventId={eventId} token={token} onBack={navigateToHome} />;
-  }
-
-  if (page === 'view') {
-    return <ViewEvent eventId={eventId} token={token} onBack={navigateToHome} />;
   }
 
   if (page === 'respond') {
@@ -108,7 +104,7 @@ function App() {
                   key={index}
                   href={item.type === 'created'
                     ? `/e/${item.eventId}?token=${item.editToken}`
-                    : `/v/${item.eventId}?token=${item.viewToken}`
+                    : `/e/${item.eventId}?token=${item.viewToken}`
                   }
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -131,12 +127,9 @@ function App() {
                     </p>
                   )}
                   {item.type === 'created' && (
-                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <div style={{ marginTop: '0.5rem' }}>
                       <Link href={`/e/${item.eventId}?token=${item.editToken}`} size="sm">
                         編集・管理
-                      </Link>
-                      <Link href={`/v/${item.eventId}?token=${item.viewToken}`} size="sm">
-                        結果を見る
                       </Link>
                     </div>
                   )}

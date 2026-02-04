@@ -153,7 +153,7 @@ export default function ParticipantResponse({ eventId, token, onBack }: Particip
           });
         }
         // 回答状況ページに遷移
-        window.location.href = `/v/${eventId}?token=${token}`;
+        window.location.href = `/e/${eventId}?token=${token}`;
       } else {
         setError(data.error || '回答の送信に失敗しました');
       }

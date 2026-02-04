@@ -51,6 +51,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [editingResponse, setEditingResponse] = useState<ParticipantResponse | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   useEffect(() => {
     loadEvent();
@@ -64,6 +65,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
 
       if (response.ok) {
         setEvent(data.event);
+        setCanEdit(data.canEdit ?? false);
       } else {
         setError(data.error || 'イベントの読み込みに失敗しました');
       }
@@ -163,7 +165,6 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
     );
   }
 
-  const viewUrl = `${window.location.origin}/v/${eventId}?token=${event.viewToken}`;
   const respondUrl = `${window.location.origin}/r/${eventId}?token=${event.viewToken}`;
 
   if (editingResponse) {
@@ -178,19 +179,31 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
   }
 
   const headers = isMobile
-    ? [
-        { key: 'datetime', header: '日時' },
-        { key: 'available', header: '○' },
-        { key: 'action', header: '' },
-      ]
-    : [
-        { key: 'datetime', header: '日時' },
-        { key: 'available', header: '○' },
-        { key: 'maybe', header: '△' },
-        { key: 'unavailable', header: '×' },
-        { key: 'score', header: 'スコア' },
-        { key: 'action', header: '操作' },
-      ];
+    ? canEdit
+      ? [
+          { key: 'datetime', header: '日時' },
+          { key: 'available', header: '○' },
+          { key: 'action', header: '' },
+        ]
+      : [
+          { key: 'datetime', header: '日時' },
+          { key: 'available', header: '○' },
+        ]
+    : canEdit
+      ? [
+          { key: 'datetime', header: '日時' },
+          { key: 'available', header: '○' },
+          { key: 'maybe', header: '△' },
+          { key: 'unavailable', header: '×' },
+          { key: 'score', header: 'スコア' },
+          { key: 'action', header: '操作' },
+        ]
+      : [
+          { key: 'datetime', header: '日時' },
+          { key: 'available', header: '○' },
+          { key: 'maybe', header: '△' },
+          { key: 'unavailable', header: '×' },
+        ];
 
   const rows = aggregation.slice(0, 10).map((agg) => {
     const confirmedIndices = event.confirmedSlots
@@ -238,9 +251,9 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
           </Tag>
         </div>
 
-        <div>
-          <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '1rem' }}>共有URL</h2>
-          <Stack gap={4}>
+        {canEdit && (
+          <div>
+            <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '1rem' }}>共有URL</h2>
             <div>
               <FormLabel>参加者用URL（回答）</FormLabel>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
@@ -258,25 +271,8 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                 />
               </div>
             </div>
-            <div>
-              <FormLabel>閲覧用URL</FormLabel>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-                <TextInput
-                  id="view-url"
-                  labelText=""
-                  hideLabel
-                  value={viewUrl}
-                  readOnly
-                  style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto' }}
-                />
-                <CopyButton
-                  onClick={() => navigator.clipboard.writeText(viewUrl)}
-                  feedback="コピーしました"
-                />
-              </div>
-            </div>
-          </Stack>
-        </div>
+          </div>
+        )}
 
         <div>
           <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '0.5rem' }}>回答状況</h2>
@@ -285,8 +281,8 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
           </p>
           <ResponseMatrix
             event={event}
-            onEditResponse={handleEditResponse}
-            onDeleteResponse={handleDeleteResponse}
+            onEditResponse={canEdit ? handleEditResponse : undefined}
+            onDeleteResponse={canEdit ? handleDeleteResponse : undefined}
           />
         </div>
 
