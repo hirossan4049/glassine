@@ -295,8 +295,13 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
       <FullscreenModal
         title="候補日を選択"
         isOpen={showCalendarModal}
-        onClose={() => setShowCalendarModal(false)}
-        footerText={`完了 (${selectedDates.size}日選択中)`}
+        onClose={() => {
+          setShowCalendarModal(false);
+          if (mode === 'datetime' && selectedDates.size > 0) {
+            setShowTimeModal(true);
+          }
+        }}
+        footerText={mode === 'datetime' ? `次へ (${selectedDates.size}日選択中)` : `完了 (${selectedDates.size}日選択中)`}
       >
         <CalendarGrid
           selectedDates={selectedDates}
