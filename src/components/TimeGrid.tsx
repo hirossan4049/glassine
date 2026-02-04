@@ -119,9 +119,11 @@ export default function TimeGrid({
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ dayIndex: number; hour: number; minute: number } | null>(null);
 
-  // Calculate allowed slot keys from slots prop (for availability mode)
-  const allowedSlotKeys = useMemo(() => {
-    if (mode !== 'availability' || slots.length === 0) return null;
+  // Calculate allowed slot keys and hour range from slots prop (for availability mode)
+  const { allowedSlotKeys, displayHours } = useMemo(() => {
+    if (mode !== 'availability' || slots.length === 0) {
+      return { allowedSlotKeys: null, displayHours: HOURS };
+    }
 
     // Extract unique dates from slots and sort them
     const dateMap = new Map<string, number>();
@@ -135,8 +137,10 @@ export default function TimeGrid({
       }
     }
 
-    // Build set of allowed keys
+    // Build set of allowed keys and track hour range
     const allowed = new Set<string>();
+    let minHour = 23;
+    let maxHour = 0;
     for (const slot of slots) {
       const date = new Date(slot.start);
       const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -144,8 +148,14 @@ export default function TimeGrid({
       const hour = date.getHours();
       const minute = date.getMinutes();
       allowed.add(slotKey(dayIndex, hour, minute));
+      minHour = Math.min(minHour, hour);
+      maxHour = Math.max(maxHour, hour);
     }
-    return allowed;
+
+    // Create filtered hours array (continuous range from min to max)
+    const filteredHours = HOURS.filter((h) => h >= minHour && h <= maxHour);
+
+    return { allowedSlotKeys: allowed, displayHours: filteredHours };
   }, [slots, mode]);
 
   // Navigation state for mobile
@@ -166,14 +176,14 @@ export default function TimeGrid({
 
   // Calculate visible range
   const maxDayOffset = Math.max(0, days.length - visibleDaysMobile);
-  const maxTimeOffset = Math.max(0, HOURS.length - visibleHoursMobile);
+  const maxTimeOffset = Math.max(0, displayHours.length - visibleHoursMobile);
 
   const visibleDayIndices = isMobile
     ? Array.from({ length: Math.min(visibleDaysMobile, days.length) }, (_, i) => i + dayOffset)
     : Array.from({ length: days.length }, (_, i) => i);
   const visibleHourIndices = isMobile
-    ? HOURS.slice(timeOffset, timeOffset + visibleHoursMobile)
-    : HOURS;
+    ? displayHours.slice(timeOffset, timeOffset + visibleHoursMobile)
+    : displayHours;
 
   const canNavigate = {
     up: timeOffset > 0,
