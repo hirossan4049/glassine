@@ -335,7 +335,7 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
           </p>
           <ResponseMatrix
             event={event}
-            onEditResponse={canEdit ? handleEditResponse : undefined}
+            onEditResponse={handleEditResponse}
             onDeleteResponse={canEdit ? handleDeleteResponse : undefined}
           />
         </div>
