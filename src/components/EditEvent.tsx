@@ -374,14 +374,14 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                                     <Button
                                       kind={rowData.isConfirmed ? 'ghost' : 'primary'}
                                       size="sm"
-                                      renderIcon={rowData.isConfirmed ? Checkmark : undefined}
+                                      renderIcon={Checkmark}
                                       onClick={() => handleConfirm([rowData.index])}
                                       disabled={confirming || rowData.isConfirmed}
-                                      hasIconOnly={isMobile && !rowData.isConfirmed}
-                                      iconDescription={isMobile ? '確定' : undefined}
+                                      hasIconOnly={isMobile}
+                                      iconDescription="確定"
                                       style={isMobile ? { minWidth: FORM.buttonMinWidth.mobile, padding: '0.5rem' } : undefined}
                                     >
-                                      {isMobile ? (rowData.isConfirmed ? '✓' : '') : (rowData.isConfirmed ? '確定済み' : '確定')}
+                                      {isMobile ? '' : (rowData.isConfirmed ? '確定済み' : '確定')}
                                     </Button>
                                   </TableCell>
                                 );
