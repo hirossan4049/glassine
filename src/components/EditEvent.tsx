@@ -16,7 +16,7 @@ import {
   TableBody,
   TableCell,
 } from '@carbon/react';
-import { ArrowLeft, Checkmark } from '@carbon/react/icons';
+import { ArrowLeft, Checkmark, Launch } from '@carbon/react/icons';
 import type { Event, SlotAggregation, EventSlot, EventMode, ParticipantResponse } from '../types';
 import ResponseMatrix from './ResponseMatrix';
 import ResponseEditor from './ResponseEditor';
@@ -312,6 +312,16 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                 <CopyButton
                   onClick={() => navigator.clipboard.writeText(respondUrl)}
                   feedback="コピーしました"
+                />
+                <Button
+                  kind="ghost"
+                  size="md"
+                  renderIcon={Launch}
+                  iconDescription="開く"
+                  hasIconOnly
+                  href={respondUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 />
               </div>
             </div>
