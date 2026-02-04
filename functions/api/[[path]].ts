@@ -35,6 +35,99 @@ function isDiscordWebhook(url: string | null | undefined): boolean {
   }
 }
 
+function isSlackWebhook(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname === 'hooks.slack.com' && parsed.pathname.startsWith('/services/');
+  } catch {
+    return false;
+  }
+}
+
+function buildSlackBlocks({
+  title,
+  description,
+  url,
+  footer,
+  fields,
+  imageUrl,
+}: {
+  title: string;
+  description?: string;
+  url?: string;
+  footer?: string;
+  fields?: { name: string; value: string }[];
+  imageUrl?: string;
+}) {
+  const blocks: any[] = [];
+
+  // Header
+  blocks.push({
+    type: 'header',
+    text: {
+      type: 'plain_text',
+      text: title,
+      emoji: true,
+    },
+  });
+
+  // Description section with link
+  if (description || url) {
+    const text = description
+      ? url
+        ? `${description}\n\n<${url}|イベントを見る>`
+        : description
+      : url
+        ? `<${url}|イベントを見る>`
+        : '';
+    if (text) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text,
+        },
+      });
+    }
+  }
+
+  // Fields
+  if (fields && fields.length > 0) {
+    blocks.push({
+      type: 'section',
+      fields: fields.map((f) => ({
+        type: 'mrkdwn',
+        text: `*${f.name}*\n${f.value}`,
+      })),
+    });
+  }
+
+  // Image
+  if (imageUrl) {
+    blocks.push({
+      type: 'image',
+      image_url: imageUrl,
+      alt_text: title,
+    });
+  }
+
+  // Footer context
+  if (footer) {
+    blocks.push({
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: footer,
+        },
+      ],
+    });
+  }
+
+  return blocks;
+}
+
 function buildGoogleCalendarLink({
   title,
   description,
@@ -274,28 +367,48 @@ app.post('/events/:id/responses', async (c) => {
     const viewUrl = `${origin}/v/${eventId}?token=${webhookResult.view_token}`;
     const ogImage = `${origin}/api/events/${eventId}/og`;
     const isDiscord = isDiscordWebhook(webhookResult.webhook_url);
-    const payload = isDiscord
-      ? {
-          content: `新しい回答が届きました`,
-          embeds: [
-            buildDiscordEmbed({
-              title: webhookResult.title || 'イベント',
-              description: `${body.participantName} さんが回答しました。`,
-              url: viewUrl,
-              fields: [
-                {
-                  name: '回答者',
-                  value: body.participantName,
-                  inline: true,
-                },
-              ],
-              imageUrl: ogImage,
-            }),
+    const isSlack = isSlackWebhook(webhookResult.webhook_url);
+    let payload: any;
+    if (isDiscord) {
+      payload = {
+        content: `新しい回答が届きました`,
+        embeds: [
+          buildDiscordEmbed({
+            title: webhookResult.title || 'イベント',
+            description: `${body.participantName} さんが回答しました。`,
+            url: viewUrl,
+            fields: [
+              {
+                name: '回答者',
+                value: body.participantName,
+                inline: true,
+              },
+            ],
+            imageUrl: ogImage,
+          }),
+        ],
+      };
+    } else if (isSlack) {
+      payload = {
+        text: `新しい回答: ${body.participantName} さんが "${webhookResult.title}" に回答しました`,
+        blocks: buildSlackBlocks({
+          title: webhookResult.title || 'イベント',
+          description: `${body.participantName} さんが回答しました。`,
+          url: viewUrl,
+          fields: [
+            {
+              name: '回答者',
+              value: body.participantName,
+            },
           ],
-        }
-      : {
-          text: `新しい回答: ${body.participantName} さんが "${webhookResult.title}" に回答しました`,
-        };
+          imageUrl: ogImage,
+        }),
+      };
+    } else {
+      payload = {
+        text: `新しい回答: ${body.participantName} さんが "${webhookResult.title}" に回答しました`,
+      };
+    }
     try {
       await fetch(webhookResult.webhook_url, {
         method: 'POST',
@@ -578,49 +691,75 @@ app.post('/events/:id/confirm', async (c) => {
     const viewUrl = `${origin}/v/${eventId}?token=${webhookResult.view_token}`;
     const ogImage = `${origin}/api/events/${eventId}/og`;
     const isDiscord = isDiscordWebhook(webhookResult.webhook_url);
-    const payload = isDiscord
-      ? {
-          content: `イベントが確定しました`,
-          embeds: [
-            buildDiscordEmbed({
-              title: webhookResult.title || 'イベント',
-              description: webhookResult.description || '',
-              url: viewUrl,
-              footer: humanRange || timeText ? humanRange || timeText : undefined,
-              fields: [
-                ...(humanRange
-                  ? [
-                      {
-                        name: '日時',
-                        value: humanRange,
-                        inline: false,
-                      },
-                    ]
-                  : []),
-                ...(googleCalUrl
-                  ? [
-                      {
-                        name: 'Google Calendar',
-                        value: `[追加する](${googleCalUrl})`,
-                        inline: false,
-                      },
-                    ]
-                  : []),
-              ],
-              imageUrl: ogImage,
-            }),
+    const isSlack = isSlackWebhook(webhookResult.webhook_url);
+    let payload: any;
+    if (isDiscord) {
+      payload = {
+        content: `イベントが確定しました`,
+        embeds: [
+          buildDiscordEmbed({
+            title: webhookResult.title || 'イベント',
+            description: webhookResult.description || '',
+            url: viewUrl,
+            footer: humanRange || timeText ? humanRange || timeText : undefined,
+            fields: [
+              ...(humanRange
+                ? [
+                    {
+                      name: '日時',
+                      value: humanRange,
+                      inline: false,
+                    },
+                  ]
+                : []),
+              ...(googleCalUrl
+                ? [
+                    {
+                      name: 'Google Calendar',
+                      value: `[追加する](${googleCalUrl})`,
+                      inline: false,
+                    },
+                  ]
+                : []),
+            ],
+            imageUrl: ogImage,
+          }),
+        ],
+      };
+    } else if (isSlack) {
+      payload = {
+        text: `イベントが確定しました: ${webhookResult.title}${humanRange ? ` (${humanRange})` : ''}`,
+        blocks: buildSlackBlocks({
+          title: webhookResult.title || 'イベント',
+          description: webhookResult.description || '',
+          url: viewUrl,
+          fields: [
+            ...(humanRange
+              ? [
+                  {
+                    name: '日時',
+                    value: humanRange,
+                  },
+                ]
+              : []),
+            ...(googleCalUrl
+              ? [
+                  {
+                    name: 'Google Calendar',
+                    value: `<${googleCalUrl}|追加する>`,
+                  },
+                ]
+              : []),
           ],
-        }
-      : {
-          text: `イベントが確定しました: ${webhookResult.title}${humanRange ? ` (${humanRange})` : ''}`,
-          embeds: [
-            {
-              title: webhookResult.title,
-              description: webhookResult.description || '',
-              url: viewUrl,
-            },
-          ],
-        };
+          imageUrl: ogImage,
+          footer: humanRange || undefined,
+        }),
+      };
+    } else {
+      payload = {
+        text: `イベントが確定しました: ${webhookResult.title}${humanRange ? ` (${humanRange})` : ''}`,
+      };
+    }
     try {
       await fetch(webhookResult.webhook_url, {
         method: 'POST',
