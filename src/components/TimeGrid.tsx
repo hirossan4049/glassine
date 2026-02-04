@@ -13,6 +13,9 @@ interface TimeGridProps {
   onAvailabilityChange?: (availability: Map<string, Availability>) => void;
   days?: string[];
   startDate?: Date;
+  // Mobile navigation - number of visible items
+  visibleDays?: number;
+  visibleHours?: number;
 }
 
 // Drag state for preview rendering (no state updates during drag)
@@ -100,11 +103,58 @@ export default function TimeGrid({
   onAvailabilityChange,
   days = DEFAULT_DAYS,
   startDate,
+  visibleDays = 3,
+  visibleHours = 6,
 }: TimeGridProps) {
   const isMobile = useIsMobile();
   const [selectedBrush, setSelectedBrush] = useState<Availability | 'clear'>('available');
   const [lastClickedKey, setLastClickedKey] = useState<string | null>(null);
   const [hoveredCell, setHoveredCell] = useState<{ dayIndex: number; hour: number; minute: number } | null>(null);
+
+  // Fullscreen mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Mobile navigation state
+  const [dayOffset, setDayOffset] = useState(0);
+  const [timeOffset, setTimeOffset] = useState(0);
+
+  // Calculate max offsets
+  const maxDayOffset = Math.max(0, days.length - visibleDays);
+  const maxTimeOffset = Math.max(0, HOURS.length - visibleHours);
+
+  // Get visible range for mobile (fullscreen shows all)
+  const showLimited = isMobile && !isFullscreen;
+  const visibleDayIndices = showLimited
+    ? Array.from({ length: Math.min(visibleDays, days.length - dayOffset) }, (_, i) => dayOffset + i)
+    : Array.from({ length: days.length }, (_, i) => i);
+  const visibleHourIndices = showLimited
+    ? HOURS.slice(timeOffset, timeOffset + visibleHours)
+    : HOURS;
+
+  // Navigation handlers
+  const canNavigate = {
+    up: timeOffset > 0,
+    down: timeOffset < maxTimeOffset,
+    left: dayOffset > 0,
+    right: dayOffset < maxDayOffset,
+  };
+
+  const handleNavigate = (direction: 'up' | 'down' | 'left' | 'right') => {
+    switch (direction) {
+      case 'up':
+        setTimeOffset((prev) => Math.max(0, prev - 1));
+        break;
+      case 'down':
+        setTimeOffset((prev) => Math.min(maxTimeOffset, prev + 1));
+        break;
+      case 'left':
+        setDayOffset((prev) => Math.max(0, prev - 1));
+        break;
+      case 'right':
+        setDayOffset((prev) => Math.min(maxDayOffset, prev + 1));
+        break;
+    }
+  };
 
   // Drag state as ref (no re-render during drag, only preview)
   const dragRef = useRef<DragState | null>(null);
@@ -354,21 +404,8 @@ export default function TimeGrid({
     return element?.getAttribute('data-key') ?? null;
   }, []);
 
-  return (
-    <Layer level={1}>
-      <div
-        style={{
-          overflowX: 'scroll',
-          maxWidth: '100%',
-          userSelect: 'none',
-          background: palette.layer,
-          padding: '1rem',
-          borderRadius: 0,
-          border: `1px solid ${palette.border}`,
-          boxShadow: 'none',
-          touchAction: 'pan-x', // Allow horizontal scroll, prevent vertical during drag
-        }}
-      >
+  const gridContent = (
+    <>
       <div style={{ marginBottom: '0.75rem', display: 'flex', gap: isMobile ? '0.5rem' : '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: palette.text }}>
           {isMobile ? 'ドラッグで塗る' : 'Excelライクにドラッグ + ペイント塗り'}
@@ -376,7 +413,17 @@ export default function TimeGrid({
         {!isMobile && (
           <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
         )}
-        <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+        {isMobile && (
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            style={{ marginLeft: 'auto', padding: '0.5rem' }}
+          >
+            {isFullscreen ? '✕' : '⤢'}
+          </Button>
+        )}
+        <div style={{ marginLeft: isMobile ? undefined : 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
           {isMobile ? (mode === 'select' ? selectedSlots.size : availability.size) : `${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
         </div>
       </div>
@@ -400,124 +447,235 @@ export default function TimeGrid({
         </div>
       )}
 
-      <div
-        ref={gridRef}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile
-            ? `${timeCellWidth} repeat(${days.length}, ${cellWidth})`
-            : `72px repeat(${days.length}, 72px)`,
-          gap: '1px',
-          background: palette.border,
-          border: `1px solid ${palette.border}`,
-          width: 'fit-content',
-          borderRadius: 0,
-          overflow: 'hidden',
-        }}
-        onPointerLeave={() => setHoveredCell(null)}
-        onPointerMove={(e) => {
-          if (!dragRef.current) return;
-          const key = getCellKeyFromPoint(e.clientX, e.clientY);
-          if (key) handlePointerMove(key);
-        }}
-        onPointerUp={handlePointerUp}
-      >
-        {/* Header row */}
-        <div
-          style={{
-            background: palette.layerAlt,
-            padding: '10px',
-            textAlign: 'center',
-            fontWeight: 700,
-            borderRight: `1px solid ${palette.border}`,
-            color: palette.text,
-            fontSize: '0.9rem',
-          }}
-        >
-          時間
+      {/* Mobile navigation: Up button */}
+      {showLimited && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => handleNavigate('up')}
+            disabled={!canNavigate.up}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            ↑
+          </Button>
         </div>
-        {dayHeaders.map((day, index) => (
+      )}
+
+      {/* Mobile navigation: Left/Right + Grid */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Left button */}
+        {showLimited && (
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => handleNavigate('left')}
+            disabled={!canNavigate.left}
+            style={{ padding: '0.5rem', minWidth: '32px' }}
+          >
+            ←
+          </Button>
+        )}
+
+        <div
+          ref={gridRef}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: showLimited
+              ? `${timeCellWidth} repeat(${visibleDayIndices.length}, ${cellWidth})`
+              : (isMobile ? `${timeCellWidth} repeat(${days.length}, ${cellWidth})` : `72px repeat(${days.length}, 72px)`),
+            gap: '1px',
+            background: palette.border,
+            border: `1px solid ${palette.border}`,
+            width: 'fit-content',
+            borderRadius: 0,
+            overflow: 'hidden',
+            flex: isMobile ? 1 : undefined,
+          }}
+          onPointerLeave={() => setHoveredCell(null)}
+          onPointerMove={(e) => {
+            if (!dragRef.current) return;
+            const key = getCellKeyFromPoint(e.clientX, e.clientY);
+            if (key) handlePointerMove(key);
+          }}
+          onPointerUp={handlePointerUp}
+        >
+          {/* Header row */}
           <div
-            key={index}
-            onPointerDown={() => handleDayHeaderClick(index)}
-            onPointerEnter={() => setHoveredCell({ dayIndex: index, hour: -1, minute: -1 })}
             style={{
               background: palette.layerAlt,
-              padding: '10px 6px',
+              padding: '10px',
               textAlign: 'center',
               fontWeight: 700,
-              fontSize: '0.85rem',
+              borderRight: `1px solid ${palette.border}`,
               color: palette.text,
-              borderRight: index === dayHeaders.length - 1 ? 'none' : `1px solid ${palette.border}`,
-              borderBottom: `1px solid ${palette.border}`,
-              cursor: 'pointer',
-              userSelect: 'none',
+              fontSize: '0.9rem',
             }}
           >
-            {day}
+            時間
           </div>
-        ))}
+          {visibleDayIndices.map((dayIndex, visualIndex) => (
+            <div
+              key={dayIndex}
+              onPointerDown={() => handleDayHeaderClick(dayIndex)}
+              onPointerEnter={() => setHoveredCell({ dayIndex, hour: -1, minute: -1 })}
+              style={{
+                background: palette.layerAlt,
+                padding: '10px 6px',
+                textAlign: 'center',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                color: palette.text,
+                borderRight: visualIndex === visibleDayIndices.length - 1 ? 'none' : `1px solid ${palette.border}`,
+                borderBottom: `1px solid ${palette.border}`,
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              {dayHeaders[dayIndex]}
+            </div>
+          ))}
 
-        {/* Time slots */}
-        {HOURS.map((hour) =>
-          [0, 30].map((minute) => {
-            const timeLabel = minute === 0 ? formatTime(hour, 0) : '';
-            return (
-              <Fragment key={`${hour}-${minute}`}>
-                <div
-                  style={{
-                    background: palette.layerAlt,
-                    padding: '6px',
-                    textAlign: 'right',
-                    fontSize: '0.85rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    color: palette.text,
-                    borderRight: `1px solid ${palette.border}`,
-                    borderBottom: `1px solid ${palette.border}`,
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                  }}
-                  onPointerDown={() => handleTimeHeaderClick(hour, minute)}
-                  onPointerEnter={() => setHoveredCell({ dayIndex: -1, hour, minute })}
-                >
-                  {timeLabel}
-                </div>
-                {days.map((_, dayIndex) => {
-                  const key = slotKey(dayIndex, hour, minute);
-                  const isHoverRow = hoveredCell?.hour === hour && hoveredCell?.minute === minute;
-                  const isHoverCol = hoveredCell?.dayIndex === dayIndex;
-                  return (
-                    <div
-                      key={key}
-                      data-key={key}
-                      onPointerDown={(e) => handlePointerDown(key, e.shiftKey, e)}
-                      onPointerEnter={() => {
-                        setHoveredCell({ dayIndex, hour, minute });
-                        handlePointerMove(key);
-                      }}
-                      style={{
-                        background: getCellColor(key),
-                        height: isMobile ? '40px' : '32px',
-                        cursor: 'pointer',
-                        transition: 'background 0.08s, box-shadow 0.12s, transform 0.08s',
-                        boxShadow:
-                          isHoverRow || isHoverCol
-                            ? 'inset 0 0 0 2px rgba(15,98,254,0.28)'
-                            : 'inset 0 0 0 1px rgba(0,0,0,0.03)',
-                        borderRight: `1px solid ${palette.border}`,
-                        borderBottom: `1px solid ${palette.border}`,
-                        transform: isHoverRow || isHoverCol ? 'scale(1.01)' : 'none',
-                      }}
-                    />
-                  );
-                })}
-              </Fragment>
-            );
-          })
+          {/* Time slots */}
+          {visibleHourIndices.map((hour) =>
+            [0, 30].map((minute) => {
+              const timeLabel = minute === 0 ? formatTime(hour, 0) : '';
+              return (
+                <Fragment key={`${hour}-${minute}`}>
+                  <div
+                    style={{
+                      background: palette.layerAlt,
+                      padding: '6px',
+                      textAlign: 'right',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      color: palette.text,
+                      borderRight: `1px solid ${palette.border}`,
+                      borderBottom: `1px solid ${palette.border}`,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                    onPointerDown={() => handleTimeHeaderClick(hour, minute)}
+                    onPointerEnter={() => setHoveredCell({ dayIndex: -1, hour, minute })}
+                  >
+                    {timeLabel}
+                  </div>
+                  {visibleDayIndices.map((dayIndex) => {
+                    const key = slotKey(dayIndex, hour, minute);
+                    const isHoverRow = hoveredCell?.hour === hour && hoveredCell?.minute === minute;
+                    const isHoverCol = hoveredCell?.dayIndex === dayIndex;
+                    return (
+                      <div
+                        key={key}
+                        data-key={key}
+                        onPointerDown={(e) => handlePointerDown(key, e.shiftKey, e)}
+                        onPointerEnter={() => {
+                          setHoveredCell({ dayIndex, hour, minute });
+                          handlePointerMove(key);
+                        }}
+                        style={{
+                          background: getCellColor(key),
+                          height: isMobile ? '40px' : '32px',
+                          cursor: 'pointer',
+                          transition: 'background 0.08s, box-shadow 0.12s, transform 0.08s',
+                          boxShadow:
+                            isHoverRow || isHoverCol
+                              ? 'inset 0 0 0 2px rgba(15,98,254,0.28)'
+                              : 'inset 0 0 0 1px rgba(0,0,0,0.03)',
+                          borderRight: `1px solid ${palette.border}`,
+                          borderBottom: `1px solid ${palette.border}`,
+                          transform: isHoverRow || isHoverCol ? 'scale(1.01)' : 'none',
+                        }}
+                      />
+                    );
+                  })}
+                </Fragment>
+              );
+            })
+          )}
+        </div>
+
+        {/* Right button */}
+        {showLimited && (
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => handleNavigate('right')}
+            disabled={!canNavigate.right}
+            style={{ padding: '0.5rem', minWidth: '32px' }}
+          >
+            →
+          </Button>
         )}
       </div>
+
+      {/* Mobile navigation: Down button */}
+      {showLimited && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => handleNavigate('down')}
+            disabled={!canNavigate.down}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            ↓
+          </Button>
+        </div>
+      )}
+    </>
+  );
+
+  // Fullscreen overlay for mobile
+  if (isFullscreen && isMobile) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+          background: palette.layer,
+          overflow: 'auto',
+          padding: '1rem',
+          touchAction: 'pan-x pan-y',
+        }}
+      >
+        <Layer level={1}>
+          <div
+            style={{
+              userSelect: 'none',
+              background: palette.layer,
+            }}
+          >
+            {gridContent}
+          </div>
+        </Layer>
+      </div>
+    );
+  }
+
+  return (
+    <Layer level={1}>
+      <div
+        style={{
+          overflowX: isMobile ? 'hidden' : 'scroll',
+          overflowY: isMobile ? 'hidden' : undefined,
+          maxWidth: '100%',
+          userSelect: 'none',
+          background: palette.layer,
+          padding: '1rem',
+          borderRadius: 0,
+          border: `1px solid ${palette.border}`,
+          boxShadow: 'none',
+          touchAction: isMobile ? 'none' : 'pan-x',
+        }}
+      >
+        {gridContent}
       </div>
     </Layer>
   );

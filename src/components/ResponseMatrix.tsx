@@ -94,7 +94,7 @@ export default function ResponseMatrix({ event, onEditResponse, onDeleteResponse
     : (isDateOnly ? RESPONSE_MATRIX.cellMinWidth.dateOnly.desktop : RESPONSE_MATRIX.cellMinWidth.datetime.desktop);
 
   return (
-    <div style={{ overflowX: 'scroll', WebkitOverflowScrolling: 'touch' }}>
+    <div style={{ overflowX: isMobile ? 'hidden' : 'scroll', WebkitOverflowScrolling: isMobile ? undefined : 'touch' }}>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 'max-content', fontSize: isMobile ? '0.85rem' : undefined }}>
         <thead>
           {!isDateOnly && (
