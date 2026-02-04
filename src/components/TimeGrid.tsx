@@ -95,12 +95,12 @@ function getKeysInRectSet(anchorKey: string, currentKey: string, daysCount: numb
 // Navigation constants for mobile
 const CELL_WIDTH_PX = 48;
 const CELL_HEIGHT_PX = 40;
-const NAV_BUTTONS_WIDTH = 88; // 2 × 44px
-const CONTAINER_PADDING = 32; // 1rem × 2
-const NAV_GAP = 8; // 4px × 2
+const NAV_BUTTONS_WIDTH = 80; // 2 × 40px
+const CONTAINER_PADDING = 16; // 0.5rem × 2
+const NAV_GAP = 4; // 2px × 2
 const TIME_CELL_WIDTH_PX = 56;
 // Vertical layout overhead (header, footer, padding, nav buttons, grid header, etc.)
-const VERTICAL_OVERHEAD_PX = 380;
+const VERTICAL_OVERHEAD_PX = 300;
 
 export default function TimeGrid({
   slots: _slots,
@@ -427,26 +427,26 @@ export default function TimeGrid({
           maxWidth: '100%',
           userSelect: 'none',
           background: palette.layer,
-          padding: '1rem',
+          padding: isMobile ? '0.5rem' : '1rem',
           borderRadius: 0,
-          border: `1px solid ${palette.border}`,
+          border: isMobile ? 'none' : `1px solid ${palette.border}`,
           boxShadow: 'none',
           touchAction: isMobile ? 'pan-x' : 'pan-x pan-y',
         }}
       >
-      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: isMobile ? '0.5rem' : '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ fontSize: isMobile ? '0.85rem' : '0.95rem', color: palette.text }}>
-          {isMobile ? 'ドラッグで塗る' : 'Excelライクにドラッグ + ペイント塗り'}
+      {!isMobile && (
+      <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '0.95rem', color: palette.text }}>
+          Excelライクにドラッグ + ペイント塗り
         </div>
-        {!isMobile && (
-          <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
-        )}
-        <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: isMobile ? STATUS_DISPLAY.width.mobile : STATUS_DISPLAY.width.desktop, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-          {isMobile ? (mode === 'select' ? selectedSlots.size : availability.size) : `${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
+        <div style={{ fontSize: '0.85rem', color: palette.textSubtle }}>Shiftで範囲 / 見出しクリックで列・行まとめて</div>
+        <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: palette.text, background: palette.layerAlt, padding: '0.35rem 0.6rem', borderRadius: '8px', border: `1px solid ${palette.border}`, visibility: lastClickedKey ? 'visible' : 'hidden', width: STATUS_DISPLAY.width.desktop, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+          {`${mode === 'select' ? '選択枠' : '設定枠'}: ${mode === 'select' ? selectedSlots.size : availability.size} / 起点 ${lastClickedKey}`}
         </div>
       </div>
+      )}
       {mode === 'availability' && (
-        <div style={{ marginBottom: isMobile ? '0.75rem' : '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: isMobile ? '0.25rem' : '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 700, color: palette.text, fontSize: isMobile ? '0.85rem' : undefined }}>ブラシ:</span>
           <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
             {brushOptions.map((option) => (
@@ -455,9 +455,9 @@ export default function TimeGrid({
                 kind={selectedBrush === option.value ? 'primary' : 'tertiary'}
                 size="sm"
                 onClick={() => setSelectedBrush(option.value)}
-                style={{ minWidth: isMobile ? '44px' : undefined, padding: isMobile ? '0.5rem' : undefined }}
+                style={{ minWidth: isMobile ? '40px' : undefined, padding: isMobile ? '0.25rem 0.5rem' : undefined }}
               >
-                <span style={{ fontSize: isMobile ? '1.2rem' : '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: isMobile ? 0 : '0.25rem' }}>{option.symbol}</span>
+                <span style={{ fontSize: isMobile ? '1.1rem' : '1.1rem', color: selectedBrush === option.value ? 'inherit' : option.symbolColor, marginRight: isMobile ? 0 : '0.25rem' }}>{option.symbol}</span>
                 {!isMobile && option.label}
               </Button>
             ))}
@@ -467,30 +467,30 @@ export default function TimeGrid({
 
       {/* Navigation: Up button (mobile only) */}
       {isMobile && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2px' }}>
           <Button
             kind="tertiary"
             size="sm"
             onClick={() => handleNavigate('up')}
             disabled={!canNavigate.up}
-            style={{ minWidth: '44px', padding: '0.5rem' }}
+            style={{ minWidth: '40px', padding: '0.25rem' }}
           >
-            <ChevronUp size={20} />
+            <ChevronUp size={18} />
           </Button>
         </div>
       )}
 
       {/* Left/Right buttons + Grid container (mobile only wraps with buttons) */}
-      <div style={{ display: isMobile ? 'flex' : 'block', alignItems: 'center', gap: '4px' }}>
+      <div style={{ display: isMobile ? 'flex' : 'block', alignItems: 'center', gap: '2px' }}>
         {isMobile && (
           <Button
             kind="tertiary"
             size="sm"
             onClick={() => handleNavigate('left')}
             disabled={!canNavigate.left}
-            style={{ minWidth: '44px', padding: '0.5rem', flexShrink: 0 }}
+            style={{ minWidth: '40px', padding: '0.25rem', flexShrink: 0 }}
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={18} />
           </Button>
         )}
 
@@ -620,24 +620,24 @@ export default function TimeGrid({
             size="sm"
             onClick={() => handleNavigate('right')}
             disabled={!canNavigate.right}
-            style={{ minWidth: '44px', padding: '0.5rem', flexShrink: 0 }}
+            style={{ minWidth: '40px', padding: '0.25rem', flexShrink: 0 }}
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={18} />
           </Button>
         )}
       </div>
 
       {/* Navigation: Down button (mobile only) */}
       {isMobile && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2px' }}>
           <Button
             kind="tertiary"
             size="sm"
             onClick={() => handleNavigate('down')}
             disabled={!canNavigate.down}
-            style={{ minWidth: '44px', padding: '0.5rem' }}
+            style={{ minWidth: '40px', padding: '0.25rem' }}
           >
-            <ChevronDown size={20} />
+            <ChevronDown size={18} />
           </Button>
         </div>
       )}
