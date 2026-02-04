@@ -1,5 +1,7 @@
 # Glassine
 
+https://github.com/hirossan4049/glassine/blob/main/docs/assets/glassine-demo.webm
+
 ログイン不要の日程調整ツール
 
 ## 概要
@@ -133,13 +135,14 @@ MIT
 - oxlintでリンティング
 - 未使用変数は `_` プレフィックス
 
-### E2Eテスト / GIF作成
+### E2Eテスト / 録画
 
 - E2Eテスト実行: `npm run test:e2e` (Playwright)
-- Docs用GIF生成: `npm run e2e:docs`
+- Docs用デモ録画: `npm run e2e:docs`
   - `BASE_URL` 環境変数で対象URLを指定してください（例: `BASE_URL=http://localhost:4173 npm run e2e:docs`）。自動サーバ起動は行わないため、必要に応じて別途 `npm run preview -- --host --port 4173` などで起動してください。
-  - 生成物: `docs/assets/glassine-demo.gif`
+  - 生成物: `docs/assets/glassine-demo.webm`（READMEから直接再生: [glassine-demo.webm](docs/assets/glassine-demo.webm)）
 
 ### 貢献
 
 Issue、Pull Requestを歓迎します。
+
