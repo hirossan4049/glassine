@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS events (
   view_token TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   confirmed_slots TEXT,
+  webhook_url TEXT,
   timezone TEXT DEFAULT 'Asia/Tokyo',
   mode TEXT DEFAULT 'datetime' CHECK(mode IN ('dateonly', 'datetime'))
 );

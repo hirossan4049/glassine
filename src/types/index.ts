@@ -29,6 +29,7 @@ export interface Event {
   description?: string;
   editToken: string;
   viewToken: string;
+  webhookUrl?: string;
   createdAt: number;
   confirmedSlots?: string; // JSON string of confirmed slot indices
   timezone: string;
@@ -43,6 +44,7 @@ export interface CreateEventRequest {
   slots: TimeSlot[];
   timezone?: string;
   mode?: EventMode;
+  webhookUrl?: string;
 }
 
 export interface CreateResponseRequest {

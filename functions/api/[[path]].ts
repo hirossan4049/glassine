@@ -12,6 +12,19 @@ function generateToken(length = 32): string {
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, length);
 }
 
+function formatForGoogleCalendar(date: Date, isAllDay: boolean): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  if (isAllDay) {
+    return `${year}${month}${day}`;
+  }
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+}
+
 // Create event
 app.post('/events', async (c) => {
   const body: CreateEventRequest = await c.req.json();
@@ -20,12 +33,12 @@ app.post('/events', async (c) => {
   const viewToken = generateToken();
   const createdAt = Date.now();
 
-  const { title, description, slots, timezone = 'Asia/Tokyo', mode = 'datetime' } = body;
+  const { title, description, slots, timezone = 'Asia/Tokyo', mode = 'datetime', webhookUrl } = body;
 
   // Insert event
   await c.env.DB.prepare(
-    'INSERT INTO events (id, title, description, edit_token, view_token, created_at, timezone, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(eventId, title, description || null, editToken, viewToken, createdAt, timezone, mode).run();
+    'INSERT INTO events (id, title, description, edit_token, view_token, created_at, webhook_url, timezone, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(eventId, title, description || null, editToken, viewToken, createdAt, webhookUrl || null, timezone, mode).run();
 
   // Insert slots
   for (const slot of slots) {
@@ -113,6 +126,7 @@ app.get('/events/:id', async (c) => {
       end: s.end_time,
     })),
     responses: responses,
+    webhookUrl: eventResult.webhook_url || undefined,
   };
 
   return c.json({ event, canEdit: isEdit });
@@ -145,6 +159,25 @@ app.post('/events/:id/responses', async (c) => {
     await c.env.DB.prepare(
       'INSERT INTO response_slots (response_id, slot_start, slot_end, availability) VALUES (?, ?, ?, ?)'
     ).bind(responseId, slot.start, slot.end, slot.availability).run();
+  }
+
+  const webhookResult = await c.env.DB.prepare(
+    'SELECT webhook_url, title FROM events WHERE id = ?'
+  ).bind(eventId).first<any>();
+
+  if (webhookResult?.webhook_url) {
+    const payload = {
+      text: `新しい回答: ${body.participantName} さんが "${webhookResult.title}" に回答しました`,
+    };
+    try {
+      await fetch(webhookResult.webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('Webhook dispatch failed for URL:', webhookResult.webhook_url, err);
+    }
   }
 
   return c.json({ success: true, responseId });
@@ -398,6 +431,47 @@ app.post('/events/:id/confirm', async (c) => {
   await c.env.DB.prepare(
     'UPDATE events SET confirmed_slots = ? WHERE id = ?'
   ).bind(JSON.stringify(body.confirmedSlots), eventId).run();
+
+  const webhookResult = await c.env.DB.prepare(
+    'SELECT webhook_url, title, description, mode, view_token, timezone FROM events WHERE id = ?'
+  ).bind(eventId).first<any>();
+
+  if (webhookResult?.webhook_url) {
+    const isAllDay = webhookResult.mode === 'dateonly';
+    const confirmed = body.confirmedSlots[0];
+    let timeText = '';
+    if (confirmed !== undefined) {
+      const slot = await c.env.DB.prepare(
+        'SELECT start_time, end_time FROM event_slots WHERE event_id = ? ORDER BY start_time LIMIT 1 OFFSET ?'
+      ).bind(eventId, confirmed).first<any>();
+      if (slot) {
+        const startDate = new Date(slot.start_time);
+        const endDate = new Date(slot.end_time);
+        const start = formatForGoogleCalendar(startDate, isAllDay);
+        const end = formatForGoogleCalendar(endDate, isAllDay);
+        timeText = `${start} - ${end}`;
+      }
+    }
+    const payload = {
+      text: `イベントが確定しました: ${webhookResult.title}${timeText ? ` (${timeText})` : ''}`,
+      embeds: [
+        {
+          title: webhookResult.title,
+          description: webhookResult.description || '',
+          url: `${new URL(c.req.url).origin}/v/${eventId}?token=${webhookResult.view_token}`,
+        },
+      ],
+    };
+    try {
+      await fetch(webhookResult.webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error('Webhook dispatch failed for URL:', webhookResult.webhook_url, err);
+    }
+  }
 
   return c.json({ success: true });
 });
