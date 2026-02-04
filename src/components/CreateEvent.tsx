@@ -230,9 +230,9 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
         </div>
 
         {mode === 'datetime' && selectedDates.size > 0 && (
-          <div>
+          <div style={{overflowX: isMobile ? 'auto' : 'scroll' }}>
             <FormLabel>Step 2: 候補時間を選択</FormLabel>
-            <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem' }}>
+            <p className="cds--type-helper-text-01" style={{ marginBottom: '1rem'}}>
               {isMobile ? 'ボタンをタップして候補時間を選択' : 'グリッド上をドラッグして候補時間を選択してください'}
             </p>
             {isMobile ? (
