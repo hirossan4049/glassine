@@ -119,7 +119,7 @@ export default function CreateEvent({ onBack }: CreateEventProps) {
 
       if (response.ok) {
         addCreatedEvent({
-          eventId: data.eventId,
+          eventId: data.id,
           title: title.trim(),
           editToken: data.editToken,
           viewToken: data.viewToken,
