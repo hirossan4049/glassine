@@ -166,6 +166,40 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
   }
 
   const respondUrl = `${window.location.origin}/r/${eventId}?token=${event.viewToken}`;
+  const confirmedIndices = event.confirmedSlots ? JSON.parse(event.confirmedSlots) as number[] : [];
+  const confirmedSlot = confirmedIndices.length > 0 ? event.slots[confirmedIndices[0]] : undefined;
+
+  const formatForGoogleCalendar = (date: Date, isAllDay: boolean) => {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    if (isAllDay) {
+      return `${year}${month}${day}`;
+    }
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+    return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+  };
+
+  const googleCalendarUrl = (() => {
+    if (!confirmedSlot) return '';
+    const isAllDay = event.mode === 'dateonly';
+    const startDate = new Date(confirmedSlot.start);
+    const endDate = new Date(confirmedSlot.end + (isAllDay ? 1000 * 60 * 60 * 24 : 0));
+    const start = formatForGoogleCalendar(startDate, isAllDay);
+    const end = formatForGoogleCalendar(endDate, isAllDay);
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: event.title,
+      dates: `${start}/${end}`,
+      ctz: event.timezone || 'Asia/Tokyo',
+    });
+    if (event.description) {
+      params.set('details', event.description);
+    }
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  })();
 
   if (editingResponse) {
     return (
@@ -338,6 +372,30 @@ export default function EditEvent({ eventId, token, onBack }: EditEventProps) {
                 )}
               </DataTable>
             </div>
+          </div>
+        )}
+
+        {googleCalendarUrl && (
+          <div>
+            <h2 className="cds--type-productive-heading-03" style={{ marginBottom: '0.5rem' }}>確定した予定</h2>
+            <Stack gap={2}>
+              <div>
+                <p className="cds--type-body-01" style={{ marginBottom: '0.25rem' }}>
+                  {formatSlotDisplay(confirmedSlot, event.mode)}
+                </p>
+                <Tag type="green" size="sm">確定済み</Tag>
+              </div>
+              <Button
+                kind="primary"
+                size="md"
+                renderIcon={Checkmark}
+                href={googleCalendarUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google Calendarに追加
+              </Button>
+            </Stack>
           </div>
         )}
 
